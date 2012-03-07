@@ -1,0 +1,217 @@
+#+
+# This add-on script for Blender 2.6 manages revisions of a Blender document
+# using a Git repository. It is meant to be invoked each time
+# after saving the current document, and pops up a dialog to ask whether
+# to commit the saved document as another revision.
+#
+# I'd love to use the Dulwich library <http://www.samba.org/~jelmer/dulwich/> to
+# interface to Git, but unfortunately that doesn't seem to be available for
+# Python 3.x yet. So for now all interfacing to Git is done by spawning
+# the command-line programs.
+#
+# Copyright 2012 Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#-
+
+import sys # debug
+import os
+import subprocess
+import errno
+import bpy
+
+bl_info = \
+    {
+        "name" : "Blendgit",
+        "author" : "Lawrence D'Oliveiro <ldo@geek-central.gen.nz>",
+        "version" : (0, 0, 1),
+        "blender" : (2, 6, 2),
+        "location" : "File > Version Control",
+        "description" : "manage versions of a .blend file using Git",
+        "warning" : "",
+        "wiki_url" : "",
+        "tracker_url" : "",
+        "category" : "Object",
+    }
+
+class Failure(Exception) :
+
+    def __init__(self, Msg) :
+        self.Msg = Msg
+    #end __init__
+
+#end Failure
+
+def doc_saved() :
+    # has the current doc been saved at least once
+    return len(bpy.data.filepath) != 0
+#end doc_saved
+
+def get_repo_name() :
+    # name to use for the repo associated with this doc
+    return bpy.data.filepath + ".git"
+#end get_repo_name
+
+def do_git(args, input = "") :
+    # Cannot use GIT_DIR, as that creates a bare repo, which cannot be committed to.
+    # So I create a temporary work directory in which .git points to the actual
+    # repo directory.
+    work_dir = bpy.data.filepath + ".work"
+    try :
+        os.mkdir(work_dir)
+    except OSError as Why :
+        if Why.errno != errno.EEXIST :
+            raise
+        #end if
+    #end try
+    basename = os.path.basename(bpy.data.filepath)
+    os.symlink("../" + os.path.basename(get_repo_name()), os.path.join(work_dir, ".git"))
+      # must be a symlink because it might not initially exist
+    os.link(bpy.data.filepath, os.path.join(work_dir, basename))
+      # must be a hard link, else git commits the symlink
+    child = subprocess.Popen \
+      (
+        args = ("git",) + args,
+        stdin = subprocess.PIPE,
+        stdout = subprocess.PIPE,
+        shell = False,
+        cwd = work_dir,
+      )
+    (stdout, stderr) = child.communicate(input)
+    if child.returncode != 0 :
+        raise RuntimeError("do_git: child exit status %d" % child.returncode)
+    #end if
+    os.unlink(os.path.join(work_dir, ".git"))
+    os.unlink(os.path.join(work_dir, basename))
+    os.rmdir(work_dir)
+    return stdout
+#end do_git
+
+def ListCommits(self, context) :
+    repo_name = get_repo_name()
+    if False : # os.path.isdir(repo_name) :
+        TBD
+        Result = tuple \
+          (
+            (m.name, m.name, "") for m in TheObject.data.materials
+          )
+        TBD
+    else :
+        Result = (("", "No repo found", ""),)
+    #end if
+    return Result
+#end ListCommits
+
+class LoadVersion(bpy.types.Operator) :
+    bl_idname = "file.version_control_load"
+    bl_label = "Load Version..."
+
+    commit = bpy.props.EnumProperty \
+      (
+        items = ListCommits,
+        name = "Commit",
+        description = "which previously-saved commit to restore",
+      )
+
+    def draw(self, context) :
+        self.layout.prop_enum(self, "commit", "")
+    #end draw
+
+    def invoke(self, context, event):
+        if doc_saved() :
+            result = context.window_manager.invoke_props_dialog(self)
+        else :
+            self.report({"ERROR"}, "Need to save the new document first")
+            result = {"CANCELLED"}
+        #end if
+        return result
+    #end invoke
+
+    # def modal(self, context, event)
+      # doesn't seem to be needed
+
+    def execute(self, context) :
+        sys.stderr.write("LoadVersion.execute\n") # debug
+        # more TBD
+        return {"FINISHED"}
+    #end execute
+
+#end LoadVersion
+
+class SaveVersion(bpy.types.Operator) :
+    bl_idname = "file.version_control_save"
+    bl_label = "Save Version..."
+
+    comment = bpy.props.StringProperty(name = "Comment")
+
+    def draw(self, context) :
+        self.layout.prop(self, "comment", "")
+    #end draw
+
+    def invoke(self, context, event):
+        if doc_saved() :
+            result = context.window_manager.invoke_props_dialog(self)
+        else :
+            self.report({"ERROR"}, "Need to save the new document first")
+            result = {"CANCELLED"}
+        #end if
+        return result
+    #end invoke
+
+    def execute(self, context) :
+        if len(self.comment.strip()) != 0 :
+            sys.stderr.write("SaveVersion.execute\n") # debug
+            repo_name = get_repo_name()
+            if not os.path.isdir(repo_name) :
+                do_git(("init",))
+            #end if
+            do_git(("add", "--", os.path.basename(bpy.data.filepath)))
+            do_git(("commit", "-m" + self.comment))
+            result = {"FINISHED"}
+        else :
+            self.report({"ERROR"}, "Comment cannot be empty")
+            result = {"CANCELLED"}
+        #end if
+        return result
+    #end execute
+
+#end SaveVersion
+
+class VersionControlMenu(bpy.types.Menu) :
+    bl_idname = "file.version_control_menu"
+    bl_label = "Version Control"
+
+    def draw(self, context) :
+        for op in (LoadVersion, SaveVersion) :
+            self.layout.operator(op.bl_idname, text = op.bl_label)
+        #end for
+    #end draw
+
+#end VersionControlMenu
+
+def add_invoke_item(self, context) :
+    self.layout.menu(VersionControlMenu.bl_idname)
+#end add_invoke_item
+
+def register() :
+    bpy.utils.register_module(__name__)
+    bpy.types.INFO_MT_file.append(add_invoke_item)
+#end register
+
+def unregister() :
+    bpy.types.INFO_MT_file.remove(add_invoke_item)
+    bpy.utils.unregister_module(__name__)
+#end unregister
+
+if __name__ == "__main__" :
+    register()
+#end if
