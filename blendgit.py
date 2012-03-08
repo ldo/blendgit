@@ -27,6 +27,7 @@ import sys # debug
 import os
 import subprocess
 import errno
+import shutil
 import bpy
 
 bl_info = \
@@ -61,11 +62,15 @@ def get_repo_name() :
     return bpy.data.filepath + ".git"
 #end get_repo_name
 
-def do_git(args, input = "") :
+def get_workdir_name() :
+    return bpy.data.filepath + ".work"
+#end get_workdir_name
+
+def do_git(args, input = "", postrun = None) :
     # Cannot use GIT_DIR, as that creates a bare repo, which cannot be committed to.
     # So I create a temporary work directory in which .git points to the actual
     # repo directory.
-    work_dir = bpy.data.filepath + ".work"
+    work_dir = get_workdir_name()
     try :
         os.mkdir(work_dir)
     except OSError as Why :
@@ -90,6 +95,9 @@ def do_git(args, input = "") :
     if child.returncode != 0 :
         raise RuntimeError("do_git: child exit status %d" % child.returncode)
     #end if
+    if postrun != None :
+        postrun()
+    #end if
     os.unlink(os.path.join(work_dir, ".git"))
     os.unlink(os.path.join(work_dir, basename))
     os.rmdir(work_dir)
@@ -97,14 +105,18 @@ def do_git(args, input = "") :
 #end do_git
 
 def ListCommits(self, context) :
+    # generates the menu items showing the commit history for the user to pick from.
     repo_name = get_repo_name()
-    if False : # os.path.isdir(repo_name) :
-        TBD
+    if os.path.isdir(repo_name) :
+        sys.stderr.write("git log: %s\n" % do_git(("log", "--format=%H %s")).decode("utf-8")) # debug
         Result = tuple \
           (
-            (m.name, m.name, "") for m in TheObject.data.materials
+            (entry[0], entry[1], "")
+                for line in do_git(("log", "--format=%H %s")).decode("utf-8").split("\n")
+                if len(line) != 0
+                for entry in (line.split(" ", 1),)
           )
-        TBD
+        sys.stderr.write("git log tuples = %s\n" % repr(Result))
     else :
         Result = (("", "No repo found", ""),)
     #end if
@@ -123,7 +135,7 @@ class LoadVersion(bpy.types.Operator) :
       )
 
     def draw(self, context) :
-        self.layout.prop_enum(self, "commit", "")
+        self.layout.props_enum(self, "commit")
     #end draw
 
     def invoke(self, context, event):
@@ -140,8 +152,17 @@ class LoadVersion(bpy.types.Operator) :
       # doesn't seem to be needed
 
     def execute(self, context) :
-        sys.stderr.write("LoadVersion.execute\n") # debug
-        # more TBD
+        sys.stderr.write("LoadVersion.execute, self.commit = %s\n" % self.commit) # debug
+        def postrun() :
+            shutil.copyfile(os.path.join(get_workdir_name(), os.path.basename(bpy.data.filepath)), bpy.data.filepath)
+              # needed because git-checkout will remove hard link and make fresh copy of checked-out file
+        #end postrun
+        do_git \
+          (
+            ("checkout", "-f", self.commit, os.path.basename(bpy.data.filepath)),
+            postrun = postrun
+          )
+        bpy.ops.wm.open_mainfile("EXEC_DEFAULT", filepath = bpy.data.filepath)
         return {"FINISHED"}
     #end execute
 
