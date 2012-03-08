@@ -190,6 +190,7 @@ class SaveVersion(bpy.types.Operator) :
             repo_name = get_repo_name()
             if not os.path.isdir(repo_name) :
                 do_git(("init",))
+                do_git(("config", "--unset", "core.worktree")) # can get set for some reason
             #end if
             bpy.ops.wm.save_as_mainfile("EXEC_DEFAULT", filepath = bpy.data.filepath)
             do_git(("add", "--", os.path.basename(bpy.data.filepath)))
