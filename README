@@ -1,0 +1,5 @@
+Blendgit is an addon for Blender 2.6 <http://www.blender.org/> that
+lets you keep track of multiple versions of a .blend file using the Git
+<http://git-scm.com/> version-control system.
+
+Lawrence D'Oliveiro <ldo@geek-central.gen.nz>
