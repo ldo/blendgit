@@ -23,7 +23,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #-
 
-import sys # debug
 import os
 import subprocess
 import errno
@@ -34,14 +33,14 @@ bl_info = \
     {
         "name" : "Blendgit",
         "author" : "Lawrence D'Oliveiro <ldo@geek-central.gen.nz>",
-        "version" : (0, 0, 1),
+        "version" : (0, 1, 0),
         "blender" : (2, 6, 2),
         "location" : "File > Version Control",
         "description" : "manage versions of a .blend file using Git",
         "warning" : "",
         "wiki_url" : "",
         "tracker_url" : "",
-        "category" : "Object",
+        "category" : "System",
     }
 
 class Failure(Exception) :
@@ -108,7 +107,6 @@ def ListCommits(self, context) :
     # generates the menu items showing the commit history for the user to pick from.
     repo_name = get_repo_name()
     if os.path.isdir(repo_name) :
-        sys.stderr.write("git log: %s\n" % do_git(("log", "--format=%H %s")).decode("utf-8")) # debug
         Result = tuple \
           (
             (entry[0], entry[1], "")
@@ -116,7 +114,6 @@ def ListCommits(self, context) :
                 if len(line) != 0
                 for entry in (line.split(" ", 1),)
           )
-        sys.stderr.write("git log tuples = %s\n" % repr(Result))
     else :
         Result = (("", "No repo found", ""),)
     #end if
@@ -152,14 +149,14 @@ class LoadVersion(bpy.types.Operator) :
       # doesn't seem to be needed
 
     def execute(self, context) :
-        sys.stderr.write("LoadVersion.execute, self.commit = %s\n" % self.commit) # debug
+        basename = os.path.basename(bpy.data.filepath)
         def postrun() :
-            shutil.copyfile(os.path.join(get_workdir_name(), os.path.basename(bpy.data.filepath)), bpy.data.filepath)
+            shutil.copyfile(os.path.join(get_workdir_name(), basename), bpy.data.filepath)
               # needed because git-checkout will remove hard link and make fresh copy of checked-out file
         #end postrun
         do_git \
           (
-            ("checkout", "-f", self.commit, os.path.basename(bpy.data.filepath)),
+            ("checkout", "-f", self.commit, basename),
             postrun = postrun
           )
         bpy.ops.wm.open_mainfile("EXEC_DEFAULT", filepath = bpy.data.filepath)
@@ -190,11 +187,11 @@ class SaveVersion(bpy.types.Operator) :
 
     def execute(self, context) :
         if len(self.comment.strip()) != 0 :
-            sys.stderr.write("SaveVersion.execute\n") # debug
             repo_name = get_repo_name()
             if not os.path.isdir(repo_name) :
                 do_git(("init",))
             #end if
+            bpy.ops.wm.save_as_mainfile("EXEC_DEFAULT", filepath = bpy.data.filepath)
             do_git(("add", "--", os.path.basename(bpy.data.filepath)))
             do_git(("commit", "-m" + self.comment))
             result = {"FINISHED"}
