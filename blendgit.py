@@ -149,18 +149,23 @@ class LoadVersion(bpy.types.Operator) :
       # doesn't seem to be needed
 
     def execute(self, context) :
-        basename = os.path.basename(bpy.data.filepath)
-        def postrun() :
-            shutil.copyfile(os.path.join(get_workdir_name(), basename), bpy.data.filepath)
-              # needed because git-checkout will remove hard link and make fresh copy of checked-out file
-        #end postrun
-        do_git \
-          (
-            ("checkout", "-f", self.commit, basename),
-            postrun = postrun
-          )
-        bpy.ops.wm.open_mainfile("EXEC_DEFAULT", filepath = bpy.data.filepath)
-        return {"FINISHED"}
+        if len(self.commit) != 0 :
+            basename = os.path.basename(bpy.data.filepath)
+            def postrun() :
+                shutil.copyfile(os.path.join(get_workdir_name(), basename), bpy.data.filepath)
+                  # needed because git-checkout will remove hard link and make fresh copy of checked-out file
+            #end postrun
+            do_git \
+              (
+                ("checkout", "-f", self.commit, basename),
+                postrun = postrun
+              )
+            bpy.ops.wm.open_mainfile("EXEC_DEFAULT", filepath = bpy.data.filepath)
+            result = {"FINISHED"}
+        else :
+            result = {"CANCELLED"}
+        #end if
+        return result
     #end execute
 
 #end LoadVersion

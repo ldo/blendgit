@@ -1,5 +1,12 @@
 Blendgit is an addon for Blender 2.6 <http://www.blender.org/> that
 lets you keep track of multiple versions of a .blend file using the Git
-<http://git-scm.com/> version-control system.
+<http://git-scm.com/> version-control system. Blender itself lets you
+keep older versions of a file each time you save, up to a maximum of 32;
+using version control extends this to unlimited versions, and also lets you
+attach a comment to each one to remind yourself why it was saved.
+
+Once you have installed the addon and enabled it for the current document,
+you will see an extra submenu at the bottom of your “File” menu, entitled
+“Version Control”:  this contains two items, “Load Version...” and “Save Version...”.
 
 Lawrence D'Oliveiro <ldo@geek-central.gen.nz>
