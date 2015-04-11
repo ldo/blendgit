@@ -45,8 +45,8 @@ bl_info = \
 
 class Failure(Exception) :
 
-    def __init__(self, Msg) :
-        self.Msg = Msg
+    def __init__(self, msg) :
+        self.msg = msg
     #end __init__
 
 #end Failure
@@ -72,8 +72,8 @@ def do_git(args, input = "", postrun = None) :
     work_dir = get_workdir_name()
     try :
         os.mkdir(work_dir)
-    except OSError as Why :
-        if Why.errno != errno.EEXIST :
+    except OSError as why :
+        if why.errno != errno.EEXIST :
             raise
         #end if
     #end try
@@ -103,11 +103,11 @@ def do_git(args, input = "", postrun = None) :
     return stdout
 #end do_git
 
-def ListCommits(self, context) :
+def list_commits(self, context) :
     # generates the menu items showing the commit history for the user to pick from.
     repo_name = get_repo_name()
     if os.path.isdir(repo_name) :
-        Result = tuple \
+        result = tuple \
           (
             (entry[0], entry[1], "")
                 for line in do_git(("log", "--format=%H %s")).decode("utf-8").split("\n")
@@ -115,10 +115,10 @@ def ListCommits(self, context) :
                 for entry in (line.split(" ", 1),)
           )
     else :
-        Result = (("", "No repo found", ""),)
+        result = (("", "No repo found", ""),)
     #end if
-    return Result
-#end ListCommits
+    return result
+#end list_commits
 
 class LoadVersion(bpy.types.Operator) :
     bl_idname = "file.version_control_load"
@@ -126,7 +126,7 @@ class LoadVersion(bpy.types.Operator) :
 
     commit = bpy.props.EnumProperty \
       (
-        items = ListCommits,
+        items = list_commits,
         name = "Commit",
         description = "which previously-saved commit to restore",
       )
