@@ -133,7 +133,7 @@ class LoadVersion(bpy.types.Operator) :
       )
 
     def draw(self, context) :
-        self.layout.props_enum(self, "commit")
+        self.layout.prop(self, "commit")
     #end draw
 
     def invoke(self, context, event):
