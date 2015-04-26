@@ -24,6 +24,7 @@
 #-
 
 import os
+import time
 import subprocess
 import errno
 import shutil
@@ -50,6 +51,23 @@ class Failure(Exception) :
     #end __init__
 
 #end Failure
+
+def format_compact_datetime(timestamp) :
+    # returns as brief as possible a human-readable display of the specified date/time.
+    then_items = time.localtime(timestamp)
+    now = time.time()
+    now_items = time.localtime(now)
+    if abs(now - timestamp) < 86400 :
+        format = "%H:%M:%S"
+    else :
+        format = "%b-%d %H:%M"
+        if then_items.tm_year != now_items.tm_year :
+            format = "%Y " + format
+        #end if
+    #end if
+    return \
+        time.strftime(format, then_items)
+#end format_compact_datetime
 
 def doc_saved() :
     # has the current doc been saved at least once
@@ -110,10 +128,10 @@ def list_commits(self, context) :
     if os.path.isdir(repo_name) :
         last_commits_list = list \
           (
-            (entry[0], entry[1], "")
-                for line in do_git(("log", "--format=%H %s")).decode("utf-8").split("\n")
+            (entry[0], "%s: %s" % (format_compact_datetime(int(entry[1])), entry[2]), "")
+                for line in do_git(("log", "--format=%H %ct %s")).decode("utf-8").split("\n")
                 if len(line) != 0
-                for entry in (line.split(" ", 1),)
+                for entry in (line.split(" ", 2),)
           )
     else :
         last_commits_list = [("", "No repo found", ""),]
