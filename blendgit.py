@@ -1,5 +1,5 @@
 #+
-# This add-on script for Blender 2.6 manages revisions of a Blender document
+# This add-on script for Blender 2.7x manages revisions of a Blender document
 # using a Git repository. It is meant to be invoked each time
 # after saving the current document, and pops up a dialog to ask whether
 # to commit the saved document as another revision.
@@ -9,7 +9,7 @@
 # Python 3.x yet. So for now all interfacing to Git is done by spawning
 # the command-line programs.
 #
-# Copyright 2012 Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+# Copyright 2012, 2015 Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
