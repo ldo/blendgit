@@ -105,9 +105,10 @@ def do_git(args, input = "", postrun = None) :
 
 def list_commits(self, context) :
     # generates the menu items showing the commit history for the user to pick from.
+    global last_commits_list # docs say Python must keep ref to strings
     repo_name = get_repo_name()
     if os.path.isdir(repo_name) :
-        result = tuple \
+        last_commits_list = list \
           (
             (entry[0], entry[1], "")
                 for line in do_git(("log", "--format=%H %s")).decode("utf-8").split("\n")
@@ -115,9 +116,9 @@ def list_commits(self, context) :
                 for entry in (line.split(" ", 1),)
           )
     else :
-        result = (("", "No repo found", ""),)
+        last_commits_list = [("", "No repo found", ""),]
     #end if
-    return result
+    return last_commits_list
 #end list_commits
 
 class LoadVersion(bpy.types.Operator) :
