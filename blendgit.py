@@ -44,14 +44,6 @@ bl_info = \
         "category" : "System",
     }
 
-class Failure(Exception) :
-
-    def __init__(self, msg) :
-        self.msg = msg
-    #end __init__
-
-#end Failure
-
 def format_compact_datetime(timestamp) :
     # returns as brief as possible a human-readable display of the specified date/time.
     then_items = time.localtime(timestamp)
