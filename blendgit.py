@@ -33,7 +33,7 @@ bl_info = \
     {
         "name" : "Blendgit",
         "author" : "Lawrence D'Oliveiro <ldo@geek-central.gen.nz>",
-        "version" : (0, 2, 0),
+        "version" : (0, 2, 1),
         "blender" : (2, 7, 4),
         "location" : "File > Version Control",
         "description" : "manage versions of a .blend file using Git",
