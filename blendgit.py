@@ -1,15 +1,21 @@
 #+
 # This add-on script for Blender 2.7x manages revisions of a Blender document
-# using a Git repository. It is meant to be invoked each time
-# after saving the current document, and pops up a dialog to ask whether
-# to commit the saved document as another revision.
+# and associated files using a Git repository. It adds a “Version Control”
+# submenu to the File menu, with “Load Version...” and “Save Version...”
+# menu items; the latter can be used in place of the standard “Save” action,
+# popping up a dialog asking the user for a commit message and saving the
+# file as a new commit in the Git repo. (You can still use the normal “Save”
+# action to save a new working copy of the .blend file without committing it
+# to the repo.) The “Load Version...” action displays a popup menu listing all
+# the versions of the file you previously saved to the repo, and lets you choose
+# one to replace the current working copy.
 #
-# I'd love to use the Dulwich library <http://www.samba.org/~jelmer/dulwich/> to
-# interface to Git, but unfortunately that doesn't seem to be available for
+# I’d love to use the Dulwich library <http://www.samba.org/~jelmer/dulwich/> to
+# interface to Git, but unfortunately that doesn’t seem to be available for
 # Python 3.x yet. So for now all interfacing to Git is done by spawning
 # the command-line programs.
 #
-# Copyright 2012, 2015 Lawrence D'Oliveiro <ldo@geek-central.gen.nz>.
+# Copyright 2012, 2015 Lawrence D’Oliveiro <ldo@geek-central.gen.nz>.
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -27,12 +33,13 @@ import os
 import time
 import subprocess
 import errno
+import shutil
 import bpy
 
 bl_info = \
     {
         "name" : "Blendgit",
-        "author" : "Lawrence D'Oliveiro <ldo@geek-central.gen.nz>",
+        "author" : "Lawrence D’Oliveiro <ldo@geek-central.gen.nz>",
         "version" : (0, 2, 2),
         "blender" : (2, 7, 4),
         "location" : "File > Version Control",
@@ -92,10 +99,7 @@ def setup_workdir() :
 
 def cleanup_workdir() :
     # gets rid of the temporary work directory.
-    work_dir = get_workdir_name()
-    os.unlink(os.path.join(work_dir, ".git"))
-    os.unlink(os.path.join(work_dir, os.path.basename(bpy.data.filepath)))
-    os.rmdir(work_dir)
+    shutil.rmtree(get_workdir_name())
 #end cleanup_workdir
 
 def do_git(args, saving = False) :
@@ -168,12 +172,12 @@ class LoadVersion(bpy.types.Operator) :
     #end invoke
 
     # def modal(self, context, event)
-      # doesn't seem to be needed
+      # doesn’t seem to be needed
 
     def execute(self, context) :
         if len(self.commit) != 0 :
             basename = os.path.basename(bpy.data.filepath)
-            do_git(("checkout", "-f", self.commit, basename))
+            do_git(("checkout", "-f", self.commit, "."))
             bpy.ops.wm.open_mainfile("EXEC_DEFAULT", filepath = bpy.data.filepath)
             result = {"FINISHED"}
         else :
@@ -213,9 +217,50 @@ class SaveVersion(bpy.types.Operator) :
                 do_git(("config", "--unset", "core.worktree"), saving = True) # can get set for some reason
             #end if
             bpy.ops.wm.save_as_mainfile("EXEC_DEFAULT", filepath = bpy.data.filepath)
-            os.link(bpy.data.filepath, os.path.join(get_workdir_name(), os.path.basename(bpy.data.filepath)))
+            parent_dir = os.path.split(bpy.data.filepath)[0]
+            work_dir = get_workdir_name()
+            os.link(bpy.data.filepath, os.path.join(work_dir, os.path.basename(bpy.data.filepath)))
               # must be a hard link, else git commits the symlink
             do_git(("add", "--", os.path.basename(bpy.data.filepath)), saving = True)
+            for \
+                category, match, mismatch \
+            in \
+                (
+                    ("images", {"type" : "IMAGE"}, {}),
+                    ("libraries", {}, {}),
+                    ("fonts", {}, {"filepath" : "<builtin>"}),
+                    ("sounds", {}, {}),
+                ) \
+            :
+                for item in getattr(bpy.data, category) :
+                    if (
+                            item.packed_file == None
+                              # not packed into .blend file
+                        and
+                            item.filepath.startswith("//")
+                              # must be relative to .blend file
+                        and
+                            not item.filepath.startswith("//..")
+                              # must not be at higher level than .blend file
+                        and
+                            not any(getattr(item, k) == mismatch[k] for k in mismatch)
+                        and
+                            all(getattr(item, k) == match[k] for k in match)
+                    ) :
+                        filepath = item.filepath[2:] # relative to .blend file
+                        subparent_dir = os.path.split(filepath)[0]
+                        if len(subparent_dir) != 0 :
+                            os.makedirs(os.path.join(work_dir, subparent_dir), exist_ok = True)
+                        #end if
+                        dst_path = os.path.join(work_dir, filepath)
+                          # keep relative path within work dir
+                        os.link(os.path.join(parent_dir, filepath), dst_path)
+                          # must be a hard link, else git commits the symlink
+                        do_git(("add", "--", dst_path), saving = True)
+                          # Git will quietly ignore this if file hasn’t changed
+                    #end if
+                #end for
+            #end if
             do_git(("commit", "-m" + self.comment), saving = True)
             cleanup_workdir()
             result = {"FINISHED"}
