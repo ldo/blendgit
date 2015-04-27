@@ -72,26 +72,36 @@ def get_repo_name() :
 #end get_repo_name
 
 def get_workdir_name() :
+    # name to use for a temporary source tree directory for making commits to the repo
     return bpy.data.filepath + ".work"
 #end get_workdir_name
 
-def do_git(args, postrun = None) :
-    # Cannot use GIT_DIR, as that creates a bare repo, which cannot be committed to.
-    # So I create a temporary work directory in which .git points to the actual
-    # repo directory.
-    work_dir = get_workdir_name()
-    try :
-        os.mkdir(work_dir)
-    except OSError as why :
-        if why.errno != errno.EEXIST :
-            raise
-        #end if
-    #end try
-    basename = os.path.basename(bpy.data.filepath)
-    os.symlink("../" + os.path.basename(get_repo_name()), os.path.join(work_dir, ".git"))
-      # must be a symlink because it might not initially exist
-    os.link(bpy.data.filepath, os.path.join(work_dir, basename))
-      # must be a hard link, else git commits the symlink
+def do_git(args, saving = False) :
+    env = dict(os.environ)
+    if saving :
+        env.pop("GIT_DIR", None)
+        # Cannot use GIT_DIR, as that creates a bare repo, which cannot be committed to.
+        # So I create a temporary work directory in which .git points to the actual
+        # repo directory.
+        work_dir = get_workdir_name()
+        try :
+            os.mkdir(work_dir)
+        except OSError as why :
+            if why.errno != errno.EEXIST :
+                raise
+            #end if
+        #end try
+        env = None
+        basename = os.path.basename(bpy.data.filepath)
+        os.symlink("../" + os.path.basename(get_repo_name()), os.path.join(work_dir, ".git"))
+          # must be a symlink because it might not initially exist
+        os.link(bpy.data.filepath, os.path.join(work_dir, basename))
+          # must be a hard link, else git commits the symlink
+    else :
+        # assume repo already exists, use parent directory of .blend file as work dir
+        work_dir = os.path.split(bpy.data.filepath)[0]
+        env["GIT_DIR"] = get_repo_name()
+    #end if
     child = subprocess.Popen \
       (
         args = ("git",) + args,
@@ -99,17 +109,17 @@ def do_git(args, postrun = None) :
         stdout = subprocess.PIPE,
         shell = False,
         cwd = work_dir,
+        env = env
       )
     (stdout, stderr) = child.communicate()
     if child.returncode != 0 :
         raise RuntimeError("do_git: child exit status %d" % child.returncode)
     #end if
-    if postrun != None :
-        postrun()
+    if saving :
+        os.unlink(os.path.join(work_dir, ".git"))
+        os.unlink(os.path.join(work_dir, basename))
+        os.rmdir(work_dir)
     #end if
-    os.unlink(os.path.join(work_dir, ".git"))
-    os.unlink(os.path.join(work_dir, basename))
-    os.rmdir(work_dir)
     return stdout
 #end do_git
 
@@ -162,15 +172,7 @@ class LoadVersion(bpy.types.Operator) :
     def execute(self, context) :
         if len(self.commit) != 0 :
             basename = os.path.basename(bpy.data.filepath)
-            def postrun() :
-                shutil.copyfile(os.path.join(get_workdir_name(), basename), bpy.data.filepath)
-                  # needed because git-checkout will remove hard link and make fresh copy of checked-out file
-            #end postrun
-            do_git \
-              (
-                ("checkout", "-f", self.commit, basename),
-                postrun = postrun
-              )
+            do_git(("checkout", "-f", self.commit, basename))
             bpy.ops.wm.open_mainfile("EXEC_DEFAULT", filepath = bpy.data.filepath)
             result = {"FINISHED"}
         else :
@@ -205,12 +207,12 @@ class SaveVersion(bpy.types.Operator) :
         if len(self.comment.strip()) != 0 :
             repo_name = get_repo_name()
             if not os.path.isdir(repo_name) :
-                do_git(("init",))
-                do_git(("config", "--unset", "core.worktree")) # can get set for some reason
+                do_git(("init",), saving = True)
+                do_git(("config", "--unset", "core.worktree"), saving = True) # can get set for some reason
             #end if
             bpy.ops.wm.save_as_mainfile("EXEC_DEFAULT", filepath = bpy.data.filepath)
-            do_git(("add", "--", os.path.basename(bpy.data.filepath)))
-            do_git(("commit", "-m" + self.comment))
+            do_git(("add", "--", os.path.basename(bpy.data.filepath)), saving = True)
+            do_git(("commit", "-m" + self.comment), saving = True)
             result = {"FINISHED"}
         else :
             self.report({"ERROR"}, "Comment cannot be empty")
