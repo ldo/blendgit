@@ -33,7 +33,7 @@ bl_info = \
     {
         "name" : "Blendgit",
         "author" : "Lawrence D'Oliveiro <ldo@geek-central.gen.nz>",
-        "version" : (0, 2, 1),
+        "version" : (0, 2, 2),
         "blender" : (2, 7, 4),
         "location" : "File > Version Control",
         "description" : "manage versions of a .blend file using Git",
@@ -75,51 +75,52 @@ def get_workdir_name() :
     return bpy.data.filepath + ".work"
 #end get_workdir_name
 
+def setup_workdir() :
+    # creates a temporary work directory in which .git points to the actual
+    # repo directory.
+    work_dir = get_workdir_name()
+    try :
+        os.mkdir(work_dir)
+    except OSError as why :
+        if why.errno != errno.EEXIST :
+            raise
+        #end if
+    #end try
+    os.symlink("../" + os.path.basename(get_repo_name()), os.path.join(work_dir, ".git"))
+      # must be a symlink because it might not initially exist
+#end setup_workdir
+
+def cleanup_workdir() :
+    # gets rid of the temporary work directory.
+    work_dir = get_workdir_name()
+    os.unlink(os.path.join(work_dir, ".git"))
+    os.unlink(os.path.join(work_dir, os.path.basename(bpy.data.filepath)))
+    os.rmdir(work_dir)
+#end cleanup_workdir
+
 def do_git(args, saving = False) :
+    # common routine for invoking various Git functions.
     env = dict(os.environ)
     if saving :
+        # assume setup_workdir has been called
         env.pop("GIT_DIR", None)
         # Cannot use GIT_DIR, as that creates a bare repo, which cannot be committed to.
-        # So I create a temporary work directory in which .git points to the actual
-        # repo directory.
         work_dir = get_workdir_name()
-        try :
-            os.mkdir(work_dir)
-        except OSError as why :
-            if why.errno != errno.EEXIST :
-                raise
-            #end if
-        #end try
         env = None
-        basename = os.path.basename(bpy.data.filepath)
-        os.symlink("../" + os.path.basename(get_repo_name()), os.path.join(work_dir, ".git"))
-          # must be a symlink because it might not initially exist
-        os.link(bpy.data.filepath, os.path.join(work_dir, basename))
-          # must be a hard link, else git commits the symlink
     else :
         # assume repo already exists, use parent directory of .blend file as work dir
         work_dir = os.path.split(bpy.data.filepath)[0]
         env["GIT_DIR"] = get_repo_name()
     #end if
-    child = subprocess.Popen \
-      (
-        args = ("git",) + args,
-        stdin = subprocess.DEVNULL,
-        stdout = subprocess.PIPE,
-        shell = False,
-        cwd = work_dir,
-        env = env
-      )
-    (stdout, stderr) = child.communicate()
-    if child.returncode != 0 :
-        raise RuntimeError("do_git: child exit status %d" % child.returncode)
-    #end if
-    if saving :
-        os.unlink(os.path.join(work_dir, ".git"))
-        os.unlink(os.path.join(work_dir, basename))
-        os.rmdir(work_dir)
-    #end if
-    return stdout
+    return \
+        subprocess.check_output \
+          (
+            args = ("git",) + args,
+            stdin = subprocess.DEVNULL,
+            shell = False,
+            cwd = work_dir,
+            env = env
+          )
 #end do_git
 
 def list_commits(self, context) :
@@ -127,6 +128,7 @@ def list_commits(self, context) :
     global last_commits_list # docs say Python must keep ref to strings
     repo_name = get_repo_name()
     if os.path.isdir(repo_name) :
+        # Blender bug? Items in menu end up in reverse order from that in my list
         last_commits_list = list \
           (
             (entry[0], "%s: %s" % (format_compact_datetime(int(entry[1])), entry[2]), "")
@@ -205,13 +207,17 @@ class SaveVersion(bpy.types.Operator) :
     def execute(self, context) :
         if len(self.comment.strip()) != 0 :
             repo_name = get_repo_name()
+            setup_workdir()
             if not os.path.isdir(repo_name) :
                 do_git(("init",), saving = True)
                 do_git(("config", "--unset", "core.worktree"), saving = True) # can get set for some reason
             #end if
             bpy.ops.wm.save_as_mainfile("EXEC_DEFAULT", filepath = bpy.data.filepath)
+            os.link(bpy.data.filepath, os.path.join(get_workdir_name(), os.path.basename(bpy.data.filepath)))
+              # must be a hard link, else git commits the symlink
             do_git(("add", "--", os.path.basename(bpy.data.filepath)), saving = True)
             do_git(("commit", "-m" + self.comment), saving = True)
+            cleanup_workdir()
             result = {"FINISHED"}
         else :
             self.report({"ERROR"}, "Comment cannot be empty")
