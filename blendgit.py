@@ -75,7 +75,7 @@ def get_workdir_name() :
     return bpy.data.filepath + ".work"
 #end get_workdir_name
 
-def do_git(args, input = "", postrun = None) :
+def do_git(args, postrun = None) :
     # Cannot use GIT_DIR, as that creates a bare repo, which cannot be committed to.
     # So I create a temporary work directory in which .git points to the actual
     # repo directory.
@@ -100,7 +100,7 @@ def do_git(args, input = "", postrun = None) :
         shell = False,
         cwd = work_dir,
       )
-    (stdout, stderr) = child.communicate(input)
+    (stdout, stderr) = child.communicate()
     if child.returncode != 0 :
         raise RuntimeError("do_git: child exit status %d" % child.returncode)
     #end if
