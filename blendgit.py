@@ -27,7 +27,6 @@ import os
 import time
 import subprocess
 import errno
-import shutil
 import bpy
 
 bl_info = \
