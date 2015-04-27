@@ -95,7 +95,7 @@ def do_git(args, postrun = None) :
     child = subprocess.Popen \
       (
         args = ("git",) + args,
-        stdin = subprocess.PIPE,
+        stdin = subprocess.DEVNULL,
         stdout = subprocess.PIPE,
         shell = False,
         cwd = work_dir,
