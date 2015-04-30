@@ -228,7 +228,7 @@ class SaveVersion(bpy.types.Operator) :
                 (
                     ("images", {"type" : "IMAGE"}, {}),
                     ("libraries", {}, {}),
-                    ("fonts", {}, {"filepath" : "<builtin>"}),
+                    ("fonts", {}, (("filepath" , "<builtin>"),), ()),
                     ("sounds", {}, {}),
                 ) \
             :
@@ -243,7 +243,7 @@ class SaveVersion(bpy.types.Operator) :
                             not item.filepath.startswith("//..")
                               # must not be at higher level than .blend file
                         and
-                            not any(getattr(item, k) == mismatch[k] for k in mismatch)
+                            not any(getattr(item, k) == v for k, v in mismatch)
                         and
                             all(getattr(item, k) == match[k] for k in match)
                     ) :
