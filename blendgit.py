@@ -226,10 +226,10 @@ class SaveVersion(bpy.types.Operator) :
                 category, match, mismatch \
             in \
                 (
-                    ("images", {"type" : "IMAGE"}, {}),
-                    ("libraries", {}, {}),
-                    ("fonts", {}, (("filepath" , "<builtin>"),), ()),
-                    ("sounds", {}, {}),
+                    ("images", {"type" : "IMAGE"}, ()),
+                    ("libraries", {}, ()),
+                    ("fonts", {}, (("filepath" , "<builtin>"),)),
+                    ("sounds", {}, ()),
                 ) \
             :
                 for item in getattr(bpy.data, category) :
