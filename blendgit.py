@@ -176,7 +176,6 @@ class LoadVersion(bpy.types.Operator) :
 
     def execute(self, context) :
         if len(self.commit) != 0 :
-            basename = os.path.basename(bpy.data.filepath)
             do_git(("checkout", "-f", self.commit, "."))
             bpy.ops.wm.open_mainfile("EXEC_DEFAULT", filepath = bpy.data.filepath)
             result = {"FINISHED"}
