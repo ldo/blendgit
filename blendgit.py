@@ -226,8 +226,8 @@ class SaveVersion(bpy.types.Operator) :
             in \
                 (
                     ("images", {"type" : "IMAGE"}, ()),
+                    ("fonts", {}, (("filepath", "<builtin>"),)),
                     ("libraries", {}, ()),
-                    ("fonts", {}, (("filepath" , "<builtin>"),)),
                     ("sounds", {}, ()),
                 ) \
             :
