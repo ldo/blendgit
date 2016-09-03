@@ -225,8 +225,8 @@ class SaveVersion(bpy.types.Operator) :
                 category, match, mismatch \
             in \
                 (
-                    ("images", {"type" : "IMAGE"}, ()),
                     ("fonts", {}, (("filepath", "<builtin>"),)),
+                    ("images", {"type" : "IMAGE"}, ()),
                     ("libraries", {}, ()),
                     ("sounds", {}, ()),
                 ) \
