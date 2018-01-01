@@ -77,52 +77,30 @@ def get_repo_name() :
     return bpy.data.filepath + ".git"
 #end get_repo_name
 
-def get_workdir_name() :
-    # name to use for a temporary source tree directory for making commits to the repo
-    return bpy.data.filepath + ".work"
-#end get_workdir_name
-
 def setup_workdir() :
     # creates a temporary work directory in which .git points to the actual
     # repo directory.
-    work_dir = get_workdir_name()
+    git_dir = get_repo_name()
     try :
-        os.mkdir(work_dir)
+        os.mkdir(git_dir)
     except OSError as why :
         if why.errno != errno.EEXIST :
             raise
         #end if
-    #end try
-    os.symlink("../" + os.path.basename(get_repo_name()), os.path.join(work_dir, ".git"))
-      # must be a symlink because it might not initially exist
 #end setup_workdir
-
-def cleanup_workdir() :
-    # gets rid of the temporary work directory.
-    shutil.rmtree(get_workdir_name())
-#end cleanup_workdir
 
 def do_git(args, saving = False) :
     # common routine for invoking various Git functions.
     env = dict(os.environ)
-    if saving :
-        # assume setup_workdir has been called
-        env.pop("GIT_DIR", None)
-        # Cannot use GIT_DIR, as that creates a bare repo, which cannot be committed to.
-        work_dir = get_workdir_name()
-        env = None
-    else :
-        # assume repo already exists, use parent directory of .blend file as work dir
-        work_dir = os.path.split(bpy.data.filepath)[0]
-        env["GIT_DIR"] = get_repo_name()
+    env["GIT_DIR"] = get_repo_name()
+    parent_dir = os.path.split(bpy.data.filepath)[0]
     #end if
     return \
         subprocess.check_output \
           (
-            args = ("git",) + args,
+            args = ("git",) + ("--work-tree", parent_dir) + args,
             stdin = subprocess.DEVNULL,
             shell = False,
-            cwd = work_dir,
             env = env
           )
 #end do_git
@@ -176,6 +154,7 @@ class LoadVersion(bpy.types.Operator) :
 
     def execute(self, context) :
         if len(self.commit) != 0 :
+            parent_dir = os.path.split(bpy.data.filepath)[0]
             do_git(("checkout", "-f", self.commit, "."))
             bpy.ops.wm.open_mainfile("EXEC_DEFAULT", filepath = bpy.data.filepath)
             result = {"FINISHED"}
@@ -210,58 +189,17 @@ class SaveVersion(bpy.types.Operator) :
     def execute(self, context) :
         if len(self.comment.strip()) != 0 :
             repo_name = get_repo_name()
+            #self.report({"ERROR"}, bpy.data.filepath)
             setup_workdir()
-            if not os.path.isdir(repo_name) :
+            if os.path.isdir(repo_name) :
                 do_git(("init",), saving = True)
-                do_git(("config", "--unset", "core.worktree"), saving = True) # can get set for some reason
             #end if
             bpy.ops.wm.save_as_mainfile("EXEC_DEFAULT", filepath = bpy.data.filepath)
             parent_dir = os.path.split(bpy.data.filepath)[0]
-            work_dir = get_workdir_name()
-            os.link(bpy.data.filepath, os.path.join(work_dir, os.path.basename(bpy.data.filepath)))
+            #os.link(bpy.data.filepath, os.path.join(work_dir, os.path.basename(bpy.data.filepath)))
               # must be a hard link, else git commits the symlink
-            do_git(("add", "--", os.path.basename(bpy.data.filepath)), saving = True)
-            for \
-                category, match, mismatch \
-            in \
-                (
-                    ("fonts", {}, (("filepath", "<builtin>"),)),
-                    ("images", {"type" : "IMAGE"}, ()),
-                    ("libraries", {}, ()),
-                    ("sounds", {}, ()),
-                ) \
-            :
-                for item in getattr(bpy.data, category) :
-                    if (
-                            item.packed_file == None
-                              # not packed into .blend file
-                        and
-                            item.filepath.startswith("//")
-                              # must be relative to .blend file
-                        and
-                            not item.filepath.startswith("//..")
-                              # must not be at higher level than .blend file
-                        and
-                            not any(getattr(item, k) == v for k, v in mismatch)
-                        and
-                            all(getattr(item, k) == match[k] for k in match)
-                    ) :
-                        filepath = item.filepath[2:] # relative to .blend file
-                        subparent_dir = os.path.split(filepath)[0]
-                        if len(subparent_dir) != 0 :
-                            os.makedirs(os.path.join(work_dir, subparent_dir), exist_ok = True)
-                        #end if
-                        dst_path = os.path.join(work_dir, filepath)
-                          # keep relative path within work dir
-                        os.link(os.path.join(parent_dir, filepath), dst_path)
-                          # must be a hard link, else git commits the symlink
-                        do_git(("add", "--", dst_path), saving = True)
-                          # Git will quietly ignore this if file hasn’t changed
-                    #end if
-                #end for
-            #end if
+            do_git(("add", os.path.basename(bpy.data.filepath)), saving = True)
             do_git(("commit", "-m" + self.comment), saving = True)
-            cleanup_workdir()
             result = {"FINISHED"}
         else :
             self.report({"ERROR"}, "Comment cannot be empty")
