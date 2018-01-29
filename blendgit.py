@@ -10,10 +10,9 @@
 # the versions of the file you previously saved to the repo, and lets you choose
 # one to replace the current working copy.
 #
-# I’d love to use the Dulwich library <http://www.samba.org/~jelmer/dulwich/> to
-# interface to Git, but unfortunately that doesn’t seem to be available for
-# Python 3.x yet. So for now all interfacing to Git is done by spawning
-# the command-line programs.
+# All interfacing to Git is done by spawning the command-line
+# programs. Should I be using something like the Dulwich library
+# <http://www.samba.org/~jelmer/dulwich/> instead?
 #
 # Copyright 2012, 2015 Lawrence D’Oliveiro <ldo@geek-central.gen.nz>.
 #
