@@ -28,19 +28,11 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #-
 
-import os
-import time
-import subprocess
-import errno
-import shutil
-import bpy
-
-bl_info = \
-    {
+bl_info = {
         "name" : "Blendgit",
         "author" : "Lawrence D’Oliveiro <ldo@geek-central.gen.nz>",
         "version" : (0, 5, 0),
-        "blender" : (2, 7, 4),
+        "blender" : (2, 80, 0),
         "location" : "File > Version Control",
         "description" : "manage versions of a .blend file using Git",
         "warning" : "",
@@ -48,6 +40,13 @@ bl_info = \
         "tracker_url" : "",
         "category" : "System",
     }
+
+import os
+import time
+import subprocess
+import errno
+import shutil
+import bpy
 
 def format_compact_datetime(timestamp) :
     # returns as brief as possible a human-readable display of the specified date/time.
@@ -149,8 +148,7 @@ class LoadVersion(bpy.types.Operator) :
     bl_idname = "file.version_control_load"
     bl_label = "Load Version..."
 
-    commit = bpy.props.EnumProperty \
-      (
+    commit : bpy.props.EnumProperty (
         items = list_commits,
         name = "Commit",
         description = "which previously-saved commit to restore",
@@ -190,7 +188,7 @@ class SaveVersion(bpy.types.Operator) :
     bl_idname = "file.version_control_save"
     bl_label = "Save Version..."
 
-    comment = bpy.props.StringProperty(name = "Comment")
+    comment : bpy.props.StringProperty(name = "Comment")
 
     def draw(self, context) :
         self.layout.prop(self, "comment", "")
@@ -288,14 +286,18 @@ def add_invoke_item(self, context) :
 #end add_invoke_item
 
 def register() :
-    bpy.utils.register_module(__name__)
-    bpy.types.INFO_MT_file.append(add_invoke_item)
+    bpy.utils.register_class(VersionControlMenu)
+    bpy.utils.register_class(SaveVersion)
+    bpy.utils.register_class(LoadVersion)
+    bpy.types.TOPBAR_MT_file.append(add_invoke_item)
 #end register
 
 def unregister() :
-    bpy.types.INFO_MT_file.remove(add_invoke_item)
-    bpy.utils.unregister_module(__name__)
-#end unregister
+    bpy.types.TOPBAR_MT_file.remove(add_invoke_item)
+    bpy.utils.unregister_class(VersionControlMenu)
+    bpy.utils.unregister_class(SaveVersion)
+    bpy.utils.unregister_class(LoadVersion)
+# end unregister
 
 if __name__ == "__main__" :
     register()
