@@ -188,10 +188,15 @@ class SaveVersion(bpy.types.Operator) :
     bl_idname = "file.version_control_save"
     bl_label = "Save Version..."
 
-    comment : bpy.props.StringProperty(name = "Comment")
+    comment : bpy.props.StringProperty(
+        name = "Comment",
+        description = "Git Commit Comment (max char 72)",
+        maxlen = 72,
+        default = "",
+        )
 
     def draw(self, context) :
-        self.layout.prop(self, "comment", "")
+        self.layout.prop(self, "comment")
     #end draw
 
     def invoke(self, context, event):
