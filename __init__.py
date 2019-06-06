@@ -290,18 +290,22 @@ def add_invoke_item(self, context) :
     self.layout.menu(VersionControlMenu.bl_idname)
 #end add_invoke_item
 
+classes = [
+    VersionControlMenu,
+    SaveVersion,
+    LoadVersion
+]
+
 def register() :
-    bpy.utils.register_class(VersionControlMenu)
-    bpy.utils.register_class(SaveVersion)
-    bpy.utils.register_class(LoadVersion)
+    for c in classes:
+        bpy.utils.register_class(c)
     bpy.types.TOPBAR_MT_file.append(add_invoke_item)
 #end register
 
 def unregister() :
     bpy.types.TOPBAR_MT_file.remove(add_invoke_item)
-    bpy.utils.unregister_class(VersionControlMenu)
-    bpy.utils.unregister_class(SaveVersion)
-    bpy.utils.unregister_class(LoadVersion)
+    for c in classes:
+        bpy.utils.unregister_class(c)
 # end unregister
 
 if __name__ == "__main__" :
