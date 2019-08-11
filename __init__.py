@@ -255,7 +255,8 @@ class SaveVersion(bpy.types.Operator) :
                         #end if
                         dst_path = os.path.join(work_dir, filepath)
                           # keep relative path within work dir
-                        os.link(os.path.join(parent_dir, filepath), dst_path)
+                        if not os.path.exists(dst_path): # Avoid collisions from multiple scene copies
+                            os.link(os.path.join(parent_dir, filepath), dst_path)
                           # must be a hard link, else git commits the symlink
                         do_git(("add", "--", dst_path), saving = True)
                           # Git will quietly ignore this if file hasn’t changed
