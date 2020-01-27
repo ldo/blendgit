@@ -39,7 +39,7 @@ bl_info = \
     {
         "name" : "Blendgit",
         "author" : "Lawrence D’Oliveiro <ldo@geek-central.gen.nz>",
-        "version" : (0, 5, 0),
+        "version" : (0, 5, 1),
         "blender" : (2, 7, 4),
         "location" : "File > Version Control",
         "description" : "manage versions of a .blend file using Git",
@@ -109,7 +109,6 @@ def do_git(args, saving = False) :
         env.pop("GIT_DIR", None)
         # Cannot use GIT_DIR, as that creates a bare repo, which cannot be committed to.
         work_dir = get_workdir_name()
-        env = None
     else :
         # assume repo already exists, use parent directory of .blend file as work dir
         work_dir = os.path.split(bpy.data.filepath)[0]
