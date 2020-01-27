@@ -39,8 +39,8 @@ bl_info = \
     {
         "name" : "Blendgit",
         "author" : "Lawrence D’Oliveiro <ldo@geek-central.gen.nz>",
-        "version" : (0, 5, 1),
-        "blender" : (2, 7, 4),
+        "version" : (0, 6, 0),
+        "blender" : (2, 81, 0),
         "location" : "File > Version Control",
         "description" : "manage versions of a .blend file using Git",
         "warning" : "",
@@ -148,7 +148,7 @@ class LoadVersion(bpy.types.Operator) :
     bl_idname = "file.version_control_load"
     bl_label = "Load Version..."
 
-    commit = bpy.props.EnumProperty \
+    commit : bpy.props.EnumProperty \
       (
         items = list_commits,
         name = "Commit",
@@ -189,10 +189,10 @@ class SaveVersion(bpy.types.Operator) :
     bl_idname = "file.version_control_save"
     bl_label = "Save Version..."
 
-    comment = bpy.props.StringProperty(name = "Comment")
+    comment : bpy.props.StringProperty(name = "Comment")
 
     def draw(self, context) :
-        self.layout.prop(self, "comment", "")
+        self.layout.prop(self, "comment", text = "")
     #end draw
 
     def invoke(self, context, event):
@@ -286,14 +286,25 @@ def add_invoke_item(self, context) :
     self.layout.menu(VersionControlMenu.bl_idname)
 #end add_invoke_item
 
+_classes_ = \
+    (
+        LoadVersion,
+        SaveVersion,
+        VersionControlMenu,
+    )
+
 def register() :
-    bpy.utils.register_module(__name__)
-    bpy.types.INFO_MT_file.append(add_invoke_item)
+    for ċlass in _classes_ :
+        bpy.utils.register_class(ċlass)
+    #end for
+    bpy.types.TOPBAR_MT_file.append(add_invoke_item)
 #end register
 
 def unregister() :
-    bpy.types.INFO_MT_file.remove(add_invoke_item)
-    bpy.utils.unregister_module(__name__)
+    bpy.types.TOPBAR_MT_file.remove(add_invoke_item)
+    for ċlass in _classes_ :
+        bpy.utils.unregister_class(ċlass)
+    #end for
 #end unregister
 
 if __name__ == "__main__" :
