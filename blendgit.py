@@ -39,7 +39,7 @@ bl_info = \
     {
         "name" : "Blendgit",
         "author" : "Lawrence D’Oliveiro <ldo@geek-central.gen.nz>",
-        "version" : (0, 6, 0),
+        "version" : (0, 6, 1),
         "blender" : (2, 81, 0),
         "location" : "File > Version Control",
         "description" : "manage versions of a .blend file using Git",
@@ -251,8 +251,13 @@ class SaveVersion(bpy.types.Operator) :
                         #end if
                         dst_path = os.path.join(work_dir, filepath)
                           # keep relative path within work dir
-                        os.link(os.path.join(parent_dir, filepath), dst_path)
-                          # must be a hard link, else git commits the symlink
+                        try :
+                            os.link(os.path.join(parent_dir, filepath), dst_path)
+                              # must be a hard link, else git commits the symlink
+                        except FileExistsError :
+                            # in case of multiple references to file
+                            pass
+                        #end try
                         do_git(("add", "--", dst_path), saving = True)
                           # Git will quietly ignore this if file hasn’t changed
                     #end if
