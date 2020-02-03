@@ -39,7 +39,7 @@ bl_info = \
     {
         "name" : "Blendgit",
         "author" : "Lawrence D’Oliveiro <ldo@geek-central.gen.nz>",
-        "version" : (0, 6, 1),
+        "version" : (0, 7, 0),
         "blender" : (2, 81, 0),
         "location" : "File > Version Control",
         "description" : "manage versions of a .blend file using Git",
@@ -206,6 +206,54 @@ class SaveVersion(bpy.types.Operator) :
     #end invoke
 
     def execute(self, context) :
+
+        seen_filepaths = set()
+
+        def process_item(item) :
+            # common processing for all externally-referenceable item types
+            # other than nodes.
+            if item.filepath not in seen_filepaths :
+                seen_filepaths.add(item.filepath)
+                filepath = item.filepath[2:] # relative to .blend file
+                subparent_dir = os.path.split(filepath)[0]
+                if len(subparent_dir) != 0 :
+                    os.makedirs(os.path.join(work_dir, subparent_dir), exist_ok = True)
+                #end if
+                dst_path = os.path.join(work_dir, filepath)
+                  # keep relative path within work dir
+                try :
+                    os.link(os.path.join(parent_dir, filepath), dst_path)
+                      # must be a hard link, else git commits the symlink
+                except FileExistsError :
+                    # in case of multiple references to file
+                    pass
+                #end try
+                do_git(("add", "--", dst_path), saving = True)
+                  # Git will quietly ignore this if file hasn’t changed
+            #end if
+        #end process_item
+
+        def process_node(node) :
+            # looks for externally-referenced OSL scripts.
+            if node.node_tree != None :
+                for subnode in node.node_tree.nodes :
+                    if subnode.type == "GROUP" :
+                        # multiple references to a node group don’t matter,
+                        # since process_item (above) automatically skips
+                        # filepaths it has already seen.
+                        process_node(subnode)
+                    elif (
+                            isinstance(subnode, bpy.types.ShaderNodeScript)
+                        and
+                            subnode.mode == "EXTERNAL"
+                    ) :
+                        process_item(subnode)
+                    #end if
+                #end for
+            #end if
+        #end process_node
+
+    #begin execute
         if len(self.comment.strip()) != 0 :
             repo_name = get_repo_name()
             setup_workdir()
@@ -244,25 +292,13 @@ class SaveVersion(bpy.types.Operator) :
                         and
                             all(getattr(item, k) == match[k] for k in match)
                     ) :
-                        filepath = item.filepath[2:] # relative to .blend file
-                        subparent_dir = os.path.split(filepath)[0]
-                        if len(subparent_dir) != 0 :
-                            os.makedirs(os.path.join(work_dir, subparent_dir), exist_ok = True)
-                        #end if
-                        dst_path = os.path.join(work_dir, filepath)
-                          # keep relative path within work dir
-                        try :
-                            os.link(os.path.join(parent_dir, filepath), dst_path)
-                              # must be a hard link, else git commits the symlink
-                        except FileExistsError :
-                            # in case of multiple references to file
-                            pass
-                        #end try
-                        do_git(("add", "--", dst_path), saving = True)
-                          # Git will quietly ignore this if file hasn’t changed
+                        process_item(item)
                     #end if
                 #end for
-            #end if
+            #end for
+            for material in bpy.data.materials :
+                process_node(material)
+            #end for
             do_git(("commit", "-m" + self.comment), saving = True)
             cleanup_workdir()
             result = {"FINISHED"}
