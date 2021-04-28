@@ -14,7 +14,7 @@
 # programs. Should I be using something like the Dulwich library
 # <http://www.samba.org/~jelmer/dulwich/> instead?
 #
-# Copyright 2012, 2015 Lawrence D’Oliveiro <ldo@geek-central.gen.nz>.
+# Copyright 2012-2021 Lawrence D’Oliveiro <ldo@geek-central.gen.nz>.
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -30,6 +30,7 @@
 
 import os
 import time
+import itertools
 import subprocess
 import errno
 import shutil
@@ -39,8 +40,8 @@ bl_info = \
     {
         "name" : "Blendgit",
         "author" : "Lawrence D’Oliveiro <ldo@geek-central.gen.nz>",
-        "version" : (0, 7, 0),
-        "blender" : (2, 81, 0),
+        "version" : (0, 8, 0),
+        "blender" : (2, 92, 0),
         "location" : "File > Version Control",
         "description" : "manage versions of a .blend file using Git",
         "warning" : "",
@@ -234,7 +235,7 @@ class SaveVersion(bpy.types.Operator) :
         #end process_item
 
         def process_node(node) :
-            # looks for externally-referenced OSL scripts.
+            # looks for externally-referenced OSL scripts and IES parameters.
             if node.node_tree != None :
                 for subnode in node.node_tree.nodes :
                     if subnode.type == "GROUP" :
@@ -243,7 +244,11 @@ class SaveVersion(bpy.types.Operator) :
                         # filepaths it has already seen.
                         process_node(subnode)
                     elif (
-                            isinstance(subnode, bpy.types.ShaderNodeScript)
+                            isinstance
+                              (
+                                subnode,
+                                (bpy.types.ShaderNodeScript, bpy.types.ShaderNodeTexIES)
+                              )
                         and
                             subnode.mode == "EXTERNAL"
                     ) :
@@ -296,8 +301,11 @@ class SaveVersion(bpy.types.Operator) :
                     #end if
                 #end for
             #end for
-            for material in bpy.data.materials :
-                process_node(material)
+            for item in itertools.chain(bpy.data.materials, bpy.data.lights) :
+                process_node(item)
+            #end for
+            for light in bpy.data.lights :
+                process_node(light)
             #end for
             do_git(("commit", "-m" + self.comment), saving = True)
             cleanup_workdir()
