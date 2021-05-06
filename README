@@ -12,9 +12,9 @@ menu, entitled “Version Control”: this contains two items, “Load
 Version...” and “Save Version...”. Selecting “Save Version...” will
 display a popup letting you enter a comment to be associated with this
 version; clicking “OK” will save the current document, along with any
-external files it depends on (fonts, images, libraries, sounds) into
-the repository and attach the comment. If your document is called
-“foo.blend”, then the repository directory will be called
+external files it depends on (fonts, images, libraries, sounds,
+scripts) into the repository and attach the comment. If your document
+is called “foo.blend”, then the repository directory will be called
 “foo.blend.git”. Note that the document has to have been saved at
 least once (i.e. it cannot be untitled) before the repository can be
 created, because it takes its name from the .blend file.
