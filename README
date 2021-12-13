@@ -1,4 +1,4 @@
-Blendgit is an addon for Blender 2.8x <https://www.blender.org/> that
+Blendgit is an addon for Blender 2.x/3.0 <https://www.blender.org/> that
 lets you keep track of multiple versions of a .blend file using the
 Git <https://git-scm.com/> version-control system. Blender itself lets
 you keep older versions of a file each time you save, up to a maximum
