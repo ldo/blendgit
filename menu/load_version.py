@@ -1,8 +1,8 @@
 import os.path
 
-import common as cmn
+import common
 
-_, bpy = cmn.import_bpy()
+_, bpy = common.import_bpy()
 
 
 def list_commits(self=None, context=None):
@@ -10,14 +10,15 @@ def list_commits(self=None, context=None):
     # pick from.
     # global last_commits_list  # docs say Python must keep ref to strings
     last_commits_list = []
-    repo_name = cmn.get_repo_name()
+    repo_name = common.get_repo_name()
     if os.path.isdir(repo_name):
         # Blender bug? Items in menu end up in reverse order from that in
         # my list
         last_commits_list = list(
             (entry[0], "%s: %s" %
-             (cmn.format_compact_datetime(int(entry[1])), entry[2]), "")
-            for line in cmn.do_git(("log", "--format=%H %ct %s")).split("\n")
+             (common.format_compact_datetime(int(entry[1])), entry[2]), "")
+            for line in common.do_git(("log", "--format=%H %ct %s"))
+                              .split("\n")
             if len(line) != 0
             for entry in (line.split(" ", 2),)
         )
@@ -41,7 +42,7 @@ class LoadVersion(bpy.types.Operator):
         self.layout.prop(self, "commit")
 
     def invoke(self, context, event):
-        if cmn.doc_saved():
+        if common.doc_saved():
             result = context.window_manager.invoke_props_dialog(self)
         else:
             self.report({"ERROR"}, "Need to save the new document first")
@@ -54,7 +55,7 @@ class LoadVersion(bpy.types.Operator):
 
     def execute(self, context):
         if len(self.commit) != 0:
-            cmn.do_git(("checkout", "-f", self.commit, "."))
+            common.do_git(("checkout", "-f", self.commit, "."))
             bpy.ops.wm.open_mainfile(
                 "EXEC_DEFAULT", filepath=bpy.data.filepath)
             result = {"FINISHED"}

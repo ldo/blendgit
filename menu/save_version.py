@@ -1,9 +1,9 @@
 import os.path
 import itertools
 
-import common as cmn
+import common
 
-_, bpy = cmn.import_bpy()
+_, bpy = common.import_bpy()
 
 
 class SaveVersion(bpy.types.Operator):
@@ -16,7 +16,7 @@ class SaveVersion(bpy.types.Operator):
         self.layout.prop(self, "comment", text="")
 
     def invoke(self, context, event):
-        if cmn.doc_saved():
+        if common.doc_saved():
             result = context.window_manager.invoke_props_dialog(self)
         else:
             self.report({"ERROR"}, "Need to save the new document first")
@@ -48,7 +48,7 @@ class SaveVersion(bpy.types.Operator):
                     # in case of multiple references to file
                     pass
 
-                cmn.add_files(files=[dst_path])
+                common.add_files(files=[dst_path])
                 # Git will quietly ignore this if file hasn’t changed
 
         def process_node(node):
@@ -70,21 +70,21 @@ class SaveVersion(bpy.types.Operator):
                         process_item(subnode)
 
         if self.comment.strip():
-            repo_name = cmn.get_repo_name()
-            cmn.setup_workdir()
+            repo_name = common.get_repo_name()
+            common.setup_workdir()
             if not os.path.isdir(repo_name):
-                cmn.do_git(("init",), saving=True)
-                cmn.do_git(("config", "--unset", "core.worktree"),
-                           saving=True)  # can get set for some reason
+                common.do_git(("init",), saving=True)
+                common.do_git(("config", "--unset", "core.worktree"),
+                              saving=True)  # can get set for some reason
 
             bpy.ops.wm.save_as_mainfile(
                 "EXEC_DEFAULT", filepath=bpy.data.filepath)
             parent_dir = os.path.split(bpy.data.filepath)[0]
-            work_dir = cmn.get_workdir_name()
+            work_dir = common.get_workdir_name()
             os.link(bpy.data.filepath, os.path.join(
                 work_dir, os.path.basename(bpy.data.filepath)))
             # must be a hard link, else git commits the symlink
-            cmn.add_files(files=[os.path.basename(bpy.data.filepath)])
+            common.add_files(files=[os.path.basename(bpy.data.filepath)])
             for category, match, mismatch in (
                     ("fonts", {}, (("filepath", "<builtin>"),)),
                     ("images", {"type": "IMAGE"}, ()),
@@ -109,8 +109,8 @@ class SaveVersion(bpy.types.Operator):
             for light in bpy.data.lights:
                 process_node(light)
 
-            cmn.do_git(("commit", "-m" + self.comment), saving=True)
-            cmn.cleanup_workdir()
+            common.do_git(("commit", "-m" + self.comment), saving=True)
+            common.cleanup_workdir()
             result = {"FINISHED"}
         else:
             self.report({"ERROR"}, "Comment cannot be empty")

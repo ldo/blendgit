@@ -1,18 +1,18 @@
 import os.path
 
-import common as cmn
+import common
 
-_, bpy = cmn.import_bpy()
+_, bpy = common.import_bpy()
 
 
 def list_branches(self=None, context=None):
     branches_list = []
-    repo_name = cmn.get_repo_name()
+    repo_name = common.get_repo_name()
     if os.path.isdir(repo_name):
-        current_branch = cmn.do_git(
+        current_branch = common.do_git(
             ('rev-parse', '--abbrev-ref', 'HEAD')).rstrip()
         branches_list.append((current_branch, current_branch, ""))
-        for branch in cmn.do_git(("branch", "--format=%(refname:short)")) \
+        for branch in common.do_git(("branch", "--format=%(refname:short)")) \
                 .split("\n"):
             if not branch:
                 break
@@ -39,8 +39,8 @@ class SelectBranch(bpy.types.Operator):
         self.layout.prop(self, "branch")
 
     def invoke(self, context, event):
-        is_saved = cmn.doc_saved()
-        working_dir_is_clean = cmn.working_dir_clean()
+        is_saved = common.doc_saved()
+        working_dir_is_clean = common.working_dir_clean()
         if not is_saved or not working_dir_is_clean:
             if not is_saved:
                 err = "Need to save first"
@@ -53,7 +53,7 @@ class SelectBranch(bpy.types.Operator):
 
     def execute(self, context):
         if len(self.branch) != 0:
-            cmn.do_git(("checkout", self.branch))
+            common.do_git(("checkout", self.branch))
             bpy.ops.wm.open_mainfile(
                 "EXEC_DEFAULT", filepath=bpy.data.filepath)
             result = {"FINISHED"}

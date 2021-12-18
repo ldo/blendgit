@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-import sys
-import os.path
-
 from . import common as cmn
 
 from .menu.select_branch import SelectBranch
