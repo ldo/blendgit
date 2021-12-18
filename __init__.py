@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-from . import common as cmn
+import sys
+
+from . import common
 
 from .menu.select_branch import SelectBranch
 from .menu.save_version import SaveVersion
@@ -23,7 +25,7 @@ bl_info = {
 # if main_dir not in sys.path:
 #     sys.path.append(main_dir)
 
-in_blender, bpy = cmn.import_bpy()
+in_blender, bpy = common.import_bpy()
 
 
 class VersionControlMenu(bpy.types.Menu):
@@ -61,8 +63,8 @@ def unregister():
 
 
 def main_test():
-    # output = cmn.do_git(("status", "--porcelain")).rstrip()
     print("Test")
+    print(type(SelectBranch().testing()))
 
 
 if __name__ == "__main__":

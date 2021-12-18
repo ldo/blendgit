@@ -1,7 +1,7 @@
 import os.path
 import itertools
 
-import common
+from .. import common
 
 _, bpy = common.import_bpy()
 

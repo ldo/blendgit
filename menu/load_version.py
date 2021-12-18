@@ -1,6 +1,6 @@
 import os.path
 
-import common
+from .. import common
 
 _, bpy = common.import_bpy()
 

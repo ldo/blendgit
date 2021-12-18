@@ -6,6 +6,9 @@ import errno
 
 
 def import_bpy():
+    """
+    Import bpy if in Blender or mock if not
+    """
     try:
         import bpy
         in_blender = True
@@ -20,8 +23,10 @@ def import_bpy():
 
 
 def format_compact_datetime(timestamp):
-    # returns as brief as possible a human-readable display of the specified
-    # date/time.
+    """
+    Returns as brief as possible a human-readable display of the specified
+    date/time.
+    """
     then_items = time.localtime(timestamp)
     now = time.time()
     now_items = time.localtime(now)
@@ -37,11 +42,12 @@ def format_compact_datetime(timestamp):
 
 
 def doc_saved():
-    # has the current doc been saved at least once
+    """Checks if the current doc been saved at least once"""
     return len(bpy.data.filepath) != 0
 
 
 def add_files(files=None):
+    """Adds files to staging"""
     if files is None:
         do_git(("add", "-A"), saving=True)
         return True
@@ -53,23 +59,28 @@ def add_files(files=None):
 
 
 def working_dir_clean():
+    """Checks if working dir is clean"""
     return not do_git(("status", "--porcelain")).rstrip()
 
 
 def get_repo_name():
-    # name to use for the repo associated with this doc
+    """Gets name to use for the repo associated with this doc"""
     return ".git"
 
 
 def get_workdir_name():
-    # name to use for a temporary source tree directory for making commits
-    # to the repo
+    """
+    Name to use for a temporary source tree directory for making commits
+    to the repo
+    """
     return ".work"
 
 
 def setup_workdir():
-    # creates a temporary work directory in which .git points to the actual
-    # repo directory.
+    """
+    Creates a temporary work directory in which .git points to the actual
+    repo directory.
+    """
     work_dir = get_workdir_name()
     try:
         os.mkdir(work_dir)
@@ -83,12 +94,12 @@ def setup_workdir():
 
 
 def cleanup_workdir():
-    # gets rid of the temporary work directory.
+    """Gets rid of the temporary work directory."""
     shutil.rmtree(get_workdir_name())
 
 
 def do_git(args, saving=False):
-    # common routine for invoking various Git functions.
+    """Common routine for invoking various Git functions."""
     env = dict(os.environ)
     if saving:
         # assume setup_workdir has been called
