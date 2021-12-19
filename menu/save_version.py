@@ -6,7 +6,54 @@ from .. import common
 _, bpy = common.import_bpy()
 
 
+def process_item(item):
+    """
+    Common processing for all externally-referenceable item types
+    other than nodes.
+    """
+    if item.filepath not in seen_filepaths:
+        seen_filepaths.add(item.filepath)
+        filepath = item.filepath[2:]  # relative to .blend file
+        subparent_dir = os.path.split(filepath)[0]
+        if len(subparent_dir) != 0:
+            os.makedirs(os.path.join(
+                work_dir, subparent_dir), exist_ok=True)
+
+        dst_path = os.path.join(work_dir, filepath)
+        # keep relative path within work dir
+        try:
+            os.link(os.path.join(parent_dir, filepath), dst_path)
+            # must be a hard link, else git commits the symlink
+        except FileExistsError:
+            # in case of multiple references to file
+            pass
+
+        common.add_files(files=[dst_path])
+        # Git will quietly ignore this if file hasn’t changed
+
+
+def process_node(node):
+    """looks for externally-referenced OSL scripts and IES parameters."""
+    if node.node_tree is not None:
+        for subnode in node.node_tree.nodes:
+            if subnode.type == "GROUP":
+                # multiple references to a node group don’t matter,
+                # since process_item (above) automatically skips
+                # filepaths it has already seen.
+                process_node(subnode)
+            elif (isinstance
+                  (subnode,
+                    (bpy.types.ShaderNodeScript,
+                     bpy.types.ShaderNodeTexIES)
+                   )
+                  and subnode.mode == "EXTERNAL"
+                  ):
+                process_item(subnode)
+
+
+# TODO: Offer to add LFS to repo
 class SaveVersion(bpy.types.Operator):
+    """Save a version"""
     bl_idname = "file.version_control_save"
     bl_label = "Save Version..."
 
@@ -25,49 +72,7 @@ class SaveVersion(bpy.types.Operator):
         return result
 
     def execute(self, context):
-
         seen_filepaths = set()
-
-        def process_item(item):
-            # common processing for all externally-referenceable item types
-            # other than nodes.
-            if item.filepath not in seen_filepaths:
-                seen_filepaths.add(item.filepath)
-                filepath = item.filepath[2:]  # relative to .blend file
-                subparent_dir = os.path.split(filepath)[0]
-                if len(subparent_dir) != 0:
-                    os.makedirs(os.path.join(
-                        work_dir, subparent_dir), exist_ok=True)
-
-                dst_path = os.path.join(work_dir, filepath)
-                # keep relative path within work dir
-                try:
-                    os.link(os.path.join(parent_dir, filepath), dst_path)
-                    # must be a hard link, else git commits the symlink
-                except FileExistsError:
-                    # in case of multiple references to file
-                    pass
-
-                common.add_files(files=[dst_path])
-                # Git will quietly ignore this if file hasn’t changed
-
-        def process_node(node):
-            # looks for externally-referenced OSL scripts and IES parameters.
-            if node.node_tree is not None:
-                for subnode in node.node_tree.nodes:
-                    if subnode.type == "GROUP":
-                        # multiple references to a node group don’t matter,
-                        # since process_item (above) automatically skips
-                        # filepaths it has already seen.
-                        process_node(subnode)
-                    elif (isinstance
-                          (subnode,
-                            (bpy.types.ShaderNodeScript,
-                             bpy.types.ShaderNodeTexIES)
-                           )
-                          and subnode.mode == "EXTERNAL"
-                          ):
-                        process_item(subnode)
 
         if self.comment.strip():
             repo_name = common.get_repo_name()

@@ -6,6 +6,7 @@ _, bpy = common.import_bpy()
 
 
 def list_branches(self=None, context=None):
+    """Returns a list of branches to be passed to SelectBranch"""
     branches_list = []
     repo_name = common.get_repo_name()
     if os.path.isdir(repo_name):
@@ -26,6 +27,7 @@ def list_branches(self=None, context=None):
 
 
 class SelectBranch(bpy.types.Operator):
+    """Select branch"""
     bl_idname = "file.version_control_select_branch"
     bl_label = "Select branch..."
 

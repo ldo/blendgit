@@ -6,9 +6,8 @@ _, bpy = common.import_bpy()
 
 
 def list_commits(self=None, context=None):
-    # generates the menu items showing the commit history for the user to
-    # pick from.
-    # global last_commits_list  # docs say Python must keep ref to strings
+    """Generates the menu items showing the commit history for the user to
+    pick from."""
     last_commits_list = []
     repo_name = common.get_repo_name()
     if os.path.isdir(repo_name):
@@ -29,6 +28,7 @@ def list_commits(self=None, context=None):
 
 
 class LoadVersion(bpy.types.Operator):
+    """Load a version"""
     bl_idname = "file.version_control_load"
     bl_label = "Load Version..."
 
@@ -49,9 +49,6 @@ class LoadVersion(bpy.types.Operator):
             result = {"CANCELLED"}
 
         return result
-
-    # def modal(self, context, event)
-    # doesn’t seem to be needed
 
     def execute(self, context):
         if len(self.commit) != 0:
