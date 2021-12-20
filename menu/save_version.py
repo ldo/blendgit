@@ -6,49 +6,39 @@ from .. import common
 _, bpy = common.import_bpy()
 
 
-def process_item(item):
-    """
-    Common processing for all externally-referenceable item types
-    other than nodes.
-    """
-    if item.filepath not in seen_filepaths:
-        seen_filepaths.add(item.filepath)
-        filepath = item.filepath[2:]  # relative to .blend file
-        subparent_dir = os.path.split(filepath)[0]
-        if len(subparent_dir) != 0:
-            os.makedirs(os.path.join(
-                work_dir, subparent_dir), exist_ok=True)
-
-        dst_path = os.path.join(work_dir, filepath)
-        # keep relative path within work dir
-        try:
-            os.link(os.path.join(parent_dir, filepath), dst_path)
-            # must be a hard link, else git commits the symlink
-        except FileExistsError:
-            # in case of multiple references to file
-            pass
-
-        common.add_files(files=[dst_path])
-        # Git will quietly ignore this if file hasn’t changed
-
-
-def process_node(node):
-    """looks for externally-referenced OSL scripts and IES parameters."""
-    if node.node_tree is not None:
-        for subnode in node.node_tree.nodes:
-            if subnode.type == "GROUP":
-                # multiple references to a node group don’t matter,
-                # since process_item (above) automatically skips
-                # filepaths it has already seen.
-                process_node(subnode)
-            elif (isinstance
-                  (subnode,
-                    (bpy.types.ShaderNodeScript,
-                     bpy.types.ShaderNodeTexIES)
-                   )
-                  and subnode.mode == "EXTERNAL"
-                  ):
-                process_item(subnode)
+def add_files(add_type=None, file=None) -> bool:
+    """Adds files to staging"""
+    if add_type not in ('all', 'category') and file is None:
+        print("Type must be one of all/category, "
+              + "or 'file' param must be set")
+        return False
+    if add_type == 'all':
+        common.do_git(("add", "-A"))
+    elif add_type == 'category':
+        for category, match, mismatch in (
+                ("fonts",     {},                (("filepath", "<builtin>"),)),
+                ("images",    {"type": "IMAGE"}, ()),
+                ("libraries", {},                ()),
+                ("sounds",    {},                ())):
+            for item in getattr(bpy.data, category):
+                # not packed into .blend file
+                if (item.packed_file is None
+                        # must be relative to .blend file
+                        and item.filepath.startswith("//")
+                        # must not be at higher level than .blend file
+                        and not item.filepath.startswith("//..")
+                        # make sure there is no mismatch
+                        and not any(getattr(item, k) == v
+                                    for k, v in mismatch)
+                        # make sure item has all match attributes
+                        and all(getattr(item, k) == match[k]
+                                for k in match)):
+                    # We know the file is relative, remove prefix
+                    relative_path = item.filepath[2:]
+                    add_files(file=relative_path)
+    elif file is not None:
+        common.do_git(("add", "--", file))
+    return True
 
 
 # TODO: Offer to add LFS to repo
@@ -58,8 +48,10 @@ class SaveVersion(bpy.types.Operator):
     bl_label = "Save Version..."
 
     comment: bpy.props.StringProperty(name="Comment")
+    add_lfs: bpy.props.BoolProperty(name="Add LFS")
 
     def draw(self, context):
+        self.layout.prop(self, "add_lfs")
         self.layout.prop(self, "comment", text="")
 
     def invoke(self, context, event):
@@ -72,50 +64,20 @@ class SaveVersion(bpy.types.Operator):
         return result
 
     def execute(self, context):
-        seen_filepaths = set()
+        if self.add_lfs:
+            self.report({'INFO'}, "Adding LFS...")
 
         if self.comment.strip():
             repo_name = common.get_repo_name()
-            common.setup_workdir()
             if not os.path.isdir(repo_name):
-                common.do_git(("init",), saving=True)
-                common.do_git(("config", "--unset", "core.worktree"),
-                              saving=True)  # can get set for some reason
+                common.do_git(("init",))
 
             bpy.ops.wm.save_as_mainfile(
                 "EXEC_DEFAULT", filepath=bpy.data.filepath)
-            parent_dir = os.path.split(bpy.data.filepath)[0]
-            work_dir = common.get_workdir_name()
-            os.link(bpy.data.filepath, os.path.join(
-                work_dir, os.path.basename(bpy.data.filepath)))
-            # must be a hard link, else git commits the symlink
-            common.add_files(files=[os.path.basename(bpy.data.filepath)])
-            for category, match, mismatch in (
-                    ("fonts", {}, (("filepath", "<builtin>"),)),
-                    ("images", {"type": "IMAGE"}, ()),
-                    ("libraries", {}, ()),
-                    ("sounds", {}, ())):
-                for item in getattr(bpy.data, category):
-                    if (item.packed_file is None
-                        # not packed into .blend file
-                        and item.filepath.startswith("//")
-                        # must be relative to .blend file
-                        and not item.filepath.startswith("//..")
-                        # must not be at higher level than .blend file
-                        and not any(getattr(item, k) == v
-                                    for k, v in mismatch)
-                            and all(getattr(item, k) == match[k]
-                                    for k in match)):
-                        process_item(item)
+            add_files(file=os.path.basename(bpy.data.filepath))
+            add_files(add_type='category')
 
-            for item in itertools.chain(bpy.data.materials, bpy.data.lights):
-                process_node(item)
-
-            for light in bpy.data.lights:
-                process_node(light)
-
-            common.do_git(("commit", "-m" + self.comment), saving=True)
-            common.cleanup_workdir()
+            common.do_git(("commit", "-m" + self.comment))
             result = {"FINISHED"}
         else:
             self.report({"ERROR"}, "Comment cannot be empty")

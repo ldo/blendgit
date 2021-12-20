@@ -63,8 +63,7 @@ def unregister():
 
 
 def main_test():
-    print("Test")
-    print(type(SelectBranch().testing()))
+    common.do_git(("status",))
 
 
 if __name__ == "__main__":
