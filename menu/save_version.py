@@ -1,7 +1,10 @@
 import os.path
 import itertools
+import subprocess as sp
+from shutil import which
 
 from .. import common
+# from .save_version_lfs_panel import LfsPanel
 
 _, bpy = common.import_bpy()
 
@@ -41,22 +44,75 @@ def add_files(add_type=None, file=None) -> bool:
     return True
 
 
+def is_lfs_installed() -> bool:
+    """Check if git-lfs is installed"""
+    print("Checking if LFS is installed...")
+    return which("git-lfs")
+
+
+def is_lfs_initialized() -> bool:
+    """Checks if LFS is initialized"""
+    # This will return a list of files tracked by LFS
+    # OR it will return an empty string, which can be checked
+    # with the 'not' operator
+    return sp.run(("git", "lfs", "ls-files"),
+                  stdout=sp.PIPE).stdout.strip()
+
+
+def initialize_lfs(extra_filetypes=()):
+    """Initializes LFS with default binary filetypes"""
+    filetypes = set(
+        # Models
+        "*.fbx", "*.obj", "*.max", "*.blend", "*.blender", "*.dae", "*.mb",
+        "*.ma", "*.3ds", "*.dfx", "*.c4d", "*.lwo", "*.lwo2", "*.abc", "*.3dm",
+        "*.bin", "*.glb",
+        # Images
+        "*.jpg", "*.jpeg", "*.png", "*.apng", "*.atsc", "*.gif", "*.bmp",
+        "*.exr", "*.tga", "*.tiff", "*.tif", "*.iff", "*.pict", "*.dds",
+        "*.xcf", "*.leo", "*.kra", "*.kpp", "*.clip", "*.webm", "*.webp",
+        "*.svg", "*.svgz", "*.psd",
+        # Archives
+        "*.zip", "*.7z", "*.gz", "*.rar", "*.tar",
+        # Unity
+        "*.meta", "*.unity", "*.unitypackage", "*.asset", "*.prefab", "*.mat",
+        "*.anim", "*.controller", "*.overrideController", "*.physicMaterial",
+        "*.physicsMaterial2D", "*.playable", "*.mask", "*.brush", "*.flare",
+        "*.fontsettings", "*.guiskin", "*.giparams", "*.renderTexture",
+        "*.spriteatlas", "*.terrainlayer", "*.mixer", "*.shadervariants",
+        "*.preset", "*.asmdef",
+        # User specified
+        *extra_filetypes
+    )
+    sp.run(("git", "lfs", "track", *filetypes))
+
+
 # TODO: Offer to add LFS to repo
 class SaveVersion(bpy.types.Operator):
     """Save a version"""
     bl_idname = "file.version_control_save"
     bl_label = "Save Version..."
 
-    comment: bpy.props.StringProperty(name="Comment")
-    add_lfs: bpy.props.BoolProperty(name="Add LFS")
+    comment: bpy.props.StringProperty(
+        name="Comment",
+        description="Commit message")
+    # add_lfs: bpy.props.BoolProperty(
+    #     name="Add LFS",
+    #     description="LFS must be installed for this to work")
 
     def draw(self, context):
-        self.layout.prop(self, "add_lfs")
+        # col = self.layout.column()
+        # col.enabled = True
+        # if not is_lfs_installed():
+        #     print("LFS is not installed!")
+        #     # Disable LFS option since it's unavailable
+        #     col.enabled = False
+        # col.prop(self, "add_lfs")
         self.layout.prop(self, "comment", text="")
 
     def invoke(self, context, event):
         if common.doc_saved():
             result = context.window_manager.invoke_props_dialog(self)
+            # result = context.window_manager.invoke_confirm(self, event)
         else:
             self.report({"ERROR"}, "Need to save the new document first")
             result = {"CANCELLED"}
@@ -66,6 +122,7 @@ class SaveVersion(bpy.types.Operator):
     def execute(self, context):
         if self.add_lfs:
             self.report({'INFO'}, "Adding LFS...")
+            initialize_lfs()
 
         if self.comment.strip():
             repo_name = common.get_repo_name()

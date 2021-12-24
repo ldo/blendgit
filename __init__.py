@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-import sys
-
 from . import common
 
 from .menu.select_branch import SelectBranch
 from .menu.save_version import SaveVersion
+# from .menu.save_version_lfs_panel import LfsPanel
 from .menu.load_version import LoadVersion
 
 bl_info = {
@@ -40,6 +39,7 @@ class VersionControlMenu(bpy.types.Menu):
 _classes_ = (
     LoadVersion,
     SaveVersion,
+    # LfsPanel,
     SelectBranch,
     VersionControlMenu,
 )
@@ -50,16 +50,22 @@ def add_invoke_item(self, context):
 
 
 def register():
-    for _cls in _classes_:
-        bpy.utils.register_class(_cls)
+    try:
+        for _cls in _classes_:
+            bpy.utils.register_class(_cls)
 
-    bpy.types.TOPBAR_MT_file.append(add_invoke_item)
+        bpy.types.TOPBAR_MT_file.append(add_invoke_item)
+    except Exception:
+        unregister()
 
 
 def unregister():
     bpy.types.TOPBAR_MT_file.remove(add_invoke_item)
     for _cls in _classes_:
-        bpy.utils.unregister_class(_cls)
+        try:
+            bpy.utils.unregister_class(_cls)
+        except Exception:
+            pass
 
 
 def main_test():
