@@ -120,9 +120,9 @@ class SaveVersion(bpy.types.Operator):
         return result
 
     def execute(self, context):
-        if self.add_lfs:
-            self.report({'INFO'}, "Adding LFS...")
-            initialize_lfs()
+        # if self.add_lfs:
+        #     self.report({'INFO'}, "Adding LFS...")
+        #     initialize_lfs()
 
         if self.comment.strip():
             repo_name = common.get_repo_name()
