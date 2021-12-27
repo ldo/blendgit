@@ -6,7 +6,7 @@ from shutil import which
 from .. import common
 # from .save_version_lfs_panel import LfsPanel
 
-_, bpy = common.import_bpy()
+bpy = common.import_bpy()
 
 
 def add_files(add_type=None, file=None) -> bool:

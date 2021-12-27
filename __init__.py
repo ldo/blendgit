@@ -24,7 +24,7 @@ bl_info = {
 # if main_dir not in sys.path:
 #     sys.path.append(main_dir)
 
-in_blender, bpy = common.import_bpy()
+bpy = common.import_bpy()
 
 
 class VersionControlMenu(bpy.types.Menu):
@@ -66,13 +66,3 @@ def unregister():
             bpy.utils.unregister_class(_cls)
         except Exception:
             pass
-
-
-def main_test():
-    common.do_git(("status",))
-
-
-if __name__ == "__main__":
-    register()
-    if not in_blender:
-        main_test()

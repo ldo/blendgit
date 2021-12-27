@@ -2,7 +2,7 @@ import os.path
 
 from .. import common
 
-_, bpy = common.import_bpy()
+bpy = common.import_bpy()
 
 
 def list_branches(self=None, context=None):
