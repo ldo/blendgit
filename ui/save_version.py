@@ -3,10 +3,12 @@ import itertools
 import subprocess as sp
 from shutil import which
 
+import bpy
+
 from .. import common
 # from .save_version_lfs_panel import LfsPanel
 
-bpy = common.import_bpy()
+# bpy = common.import_bpy()
 
 
 def add_files(add_type=None, file=None) -> bool:
@@ -16,31 +18,31 @@ def add_files(add_type=None, file=None) -> bool:
               + "or 'file' param must be set")
         return False
     if add_type == 'all':
-        common.do_git(("add", "-A"))
+        common.do_git("add", "-A")
     elif add_type == 'category':
         for category, match, mismatch in (
-                ("fonts",     {},                (("filepath", "<builtin>"),)),
-                ("images",    {"type": "IMAGE"}, ()),
-                ("libraries", {},                ()),
-                ("sounds",    {},                ())):
+                ("fonts", {}, (("filepath", "<builtin>"),)),
+                ("images", {"type": "IMAGE"}, ()),
+                ("libraries", {}, ()),
+                ("sounds", {}, ())):
             for item in getattr(bpy.data, category):
                 # not packed into .blend file
                 if (item.packed_file is None
-                        # must be relative to .blend file
-                        and item.filepath.startswith("//")
-                        # must not be at higher level than .blend file
-                        and not item.filepath.startswith("//..")
-                        # make sure there is no mismatch
+                    # must be relative to .blend file
+                    and item.filepath.startswith("//")
+                    # must not be at higher level than .blend file
+                    and not item.filepath.startswith("//..")
+                    # make sure there is no mismatch
                         and not any(getattr(item, k) == v
                                     for k, v in mismatch)
-                        # make sure item has all match attributes
-                        and all(getattr(item, k) == match[k]
-                                for k in match)):
+                    # make sure item has all match attributes
+                    and all(getattr(item, k) == match[k]
+                            for k in match)):
                     # We know the file is relative, remove prefix
                     relative_path = item.filepath[2:]
                     add_files(file=relative_path)
     elif file is not None:
-        common.do_git(("add", "--", file))
+        common.do_git("add", "--", file)
     return True
 
 
@@ -89,7 +91,7 @@ def initialize_lfs(extra_filetypes=()):
 # TODO: Offer to add LFS to repo
 class SaveVersion(bpy.types.Operator):
     """Save a version"""
-    bl_idname = "file.version_control_save"
+    bl_idname = "blendgit_OT_save_version"
     bl_label = "Save Version..."
 
     comment: bpy.props.StringProperty(
@@ -127,14 +129,14 @@ class SaveVersion(bpy.types.Operator):
         if self.comment.strip():
             repo_name = common.get_repo_name()
             if not os.path.isdir(repo_name):
-                common.do_git(("init",))
+                common.do_git("init")
 
             bpy.ops.wm.save_as_mainfile(
                 "EXEC_DEFAULT", filepath=bpy.data.filepath)
             add_files(file=os.path.basename(bpy.data.filepath))
             add_files(add_type='category')
 
-            common.do_git(("commit", "-m" + self.comment))
+            common.do_git("commit", "-m", self.comment)
             result = {"FINISHED"}
         else:
             self.report({"ERROR"}, "Comment cannot be empty")

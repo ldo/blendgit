@@ -1,8 +1,11 @@
 import time
 import os
-import shutil
 import subprocess
-import errno
+import logging
+
+
+def log(msg):
+    logging.info(msg)
 
 
 def import_bpy():
@@ -46,9 +49,9 @@ def doc_saved():
 
 def working_dir_clean():
     """Checks if working dir is clean"""
-    return not do_git(("status",
-                       "--porcelain",
-                       "--untracked-files=no")).rstrip()
+    return not do_git("status",
+                      "--porcelain",
+                      "--untracked-files=no").rstrip()
 
 
 def get_repo_name():
@@ -56,39 +59,30 @@ def get_repo_name():
     return ".git"
 
 
-# Commenting out because it doesn't work on Windows right now
-# def get_workdir_name():
-#     """
-#     Name to use for a temporary source tree directory for making commits
-#     to the repo
-#     """
-#     return ".work"
+def register(to_register=None):
+    if to_register is None:
+        from . import _classes
+        to_register = _classes
+    try:
+        for _cls in to_register:
+            log(f"Registering {_cls.__name__}")
+            if _cls not in _classes:
+                _classes.add(_cls)
+            bpy.utils.register_class(_cls)
+    except Exception:
+        unregister()
 
 
-# Commenting out because it doesn't work on Windows right now
-# def setup_workdir():
-#     """
-#     Creates a temporary work directory in which .git points to the actual
-#     repo directory.
-#     """
-#     work_dir = get_workdir_name()
-#     try:
-#         os.mkdir(work_dir)
-#     except OSError as why:
-#         if why.errno != errno.EEXIST:
-#             raise
-
-#     os.symlink(os.path.basename(get_repo_name()),
-#                os.path.join(work_dir, ".git"))
-#     # must be a symlink because it might not initially exist
+def unregister():
+    from . import _classes
+    for _cls in _classes:
+        try:
+            bpy.utils.unregister_class(_cls)
+        except Exception:
+            pass
 
 
-# def cleanup_workdir():
-#     """Gets rid of the temporary work directory."""
-#     shutil.rmtree(get_workdir_name())
-
-
-def do_git(args):
+def do_git(*args):
     """Common routine for invoking various Git functions."""
     env = dict(os.environ)
     work_dir = os.path.split(bpy.data.filepath)[0]
@@ -96,7 +90,7 @@ def do_git(args):
 
     return \
         subprocess.check_output(
-            args=("git",) + args,
+            args=("git", *args),
             stdin=subprocess.DEVNULL,
             shell=False,
             cwd=work_dir,
