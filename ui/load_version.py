@@ -30,6 +30,7 @@ def list_commits(self=None, context=None):
         for line in common.do_git(
                 "log",
                 "--format=%H %ct %s",
+                "-n", "5",
                 main_branch).split("\n"):
             if not line:
                 continue
