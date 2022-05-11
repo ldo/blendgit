@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 import logging
 
-# import bpy
+from bpy.types import Scene, Menu
+from bpy.props import StringProperty
+from bpy.utils import register_class, unregister_class
 
-from . import common
-# from .common import log
+from . import common as c
 
 # from .ui.select_branch import SelectBranch
-# from .ui.save_version import SaveVersion
+from .ui.save_version import SaveVersion, SaveCommit
 from .ui.load_version import LoadVersion, LoadCommit
 
 bl_info = {
@@ -34,7 +35,8 @@ bl_info = {
 _classes = {
     LoadVersion,
     LoadCommit,
-    # SaveVersion,
+    SaveVersion,
+    SaveCommit
     # SelectBranch,
     # VersionControlMenu,
 }
@@ -49,8 +51,22 @@ logging.getLogger('blender_cloud').setLevel(logging.DEBUG)
 
 
 def register():
-    common.register()
+    # Properties
+    Scene.commit_message = StringProperty(
+        name="Comment",
+        description="Commit message")
+    # Classes
+    try:
+        for _cls in _classes:
+            c.log(f"Registering {_cls.__name__}")
+            register_class(_cls)
+    except Exception:
+        unregister()
 
 
 def unregister():
-    common.unregister()
+    for _cls in _classes:
+        try:
+            unregister_class(_cls)
+        except Exception:
+            pass

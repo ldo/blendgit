@@ -1,14 +1,12 @@
 import os.path
-import itertools
 import subprocess as sp
 from shutil import which
 
 import bpy
 
+from . import ToolPanel
 from .. import common
 # from .save_version_lfs_panel import LfsPanel
-
-# bpy = common.import_bpy()
 
 
 def add_files(add_type=None, file=None) -> bool:
@@ -66,8 +64,8 @@ def initialize_lfs(extra_filetypes=()):
     filetypes = set(
         # Models
         "*.fbx", "*.obj", "*.max", "*.blend", "*.blender", "*.dae", "*.mb",
-        "*.ma", "*.3ds", "*.dfx", "*.c4d", "*.lwo", "*.lwo2", "*.abc", "*.3dm",
-        "*.bin", "*.glb",
+        "*.ma", "*.3ds", "*.dfx", "*.c4d", "*.lwo", "*.lwo2", "*.abc",
+        "*.3dm", "*.bin", "*.glb",
         # Images
         "*.jpg", "*.jpeg", "*.png", "*.apng", "*.atsc", "*.gif", "*.bmp",
         "*.exr", "*.tga", "*.tiff", "*.tif", "*.iff", "*.pict", "*.dds",
@@ -76,57 +74,26 @@ def initialize_lfs(extra_filetypes=()):
         # Archives
         "*.zip", "*.7z", "*.gz", "*.rar", "*.tar",
         # Unity
-        "*.meta", "*.unity", "*.unitypackage", "*.asset", "*.prefab", "*.mat",
-        "*.anim", "*.controller", "*.overrideController", "*.physicMaterial",
-        "*.physicsMaterial2D", "*.playable", "*.mask", "*.brush", "*.flare",
-        "*.fontsettings", "*.guiskin", "*.giparams", "*.renderTexture",
-        "*.spriteatlas", "*.terrainlayer", "*.mixer", "*.shadervariants",
-        "*.preset", "*.asmdef",
+        "*.meta", "*.unity", "*.unitypackage", "*.asset", "*.prefab",
+        "*.mat", "*.anim", "*.controller", "*.overrideController",
+        "*.physicMaterial", "*.physicsMaterial2D", "*.playable",
+        "*.mask", "*.brush", "*.flare", "*.fontsettings", "*.guiskin",
+        "*.giparams", "*.renderTexture", "*.spriteatlas", "*.terrainlayer",
+        "*.mixer", "*.shadervariants", "*.preset", "*.asmdef",
         # User specified
         *extra_filetypes
     )
     sp.run(("git", "lfs", "track", *filetypes))
 
 
-# TODO: Offer to add LFS to repo
-class SaveVersion(bpy.types.Operator):
-    """Save a version"""
-    bl_idname = "blendgit_OT_save_version"
-    bl_label = "Save Version..."
+class SaveCommit(bpy.types.Operator):
+    bl_idname = "blendgit.save_commit"
+    bl_label = "Save Commit"
 
-    comment: bpy.props.StringProperty(
-        name="Comment",
-        description="Commit message")
-    # add_lfs: bpy.props.BoolProperty(
-    #     name="Add LFS",
-    #     description="LFS must be installed for this to work")
+    def execute(self, context: bpy.types.Context):
+        msg = context.scene.commit_message
 
-    def draw(self, context):
-        # col = self.layout.column()
-        # col.enabled = True
-        # if not is_lfs_installed():
-        #     print("LFS is not installed!")
-        #     # Disable LFS option since it's unavailable
-        #     col.enabled = False
-        # col.prop(self, "add_lfs")
-        self.layout.prop(self, "comment", text="")
-
-    def invoke(self, context, event):
-        if common.doc_saved():
-            result = context.window_manager.invoke_props_dialog(self)
-            # result = context.window_manager.invoke_confirm(self, event)
-        else:
-            self.report({"ERROR"}, "Need to save the new document first")
-            result = {"CANCELLED"}
-
-        return result
-
-    def execute(self, context):
-        # if self.add_lfs:
-        #     self.report({'INFO'}, "Adding LFS...")
-        #     initialize_lfs()
-
-        if self.comment.strip():
+        if msg.strip():
             repo_name = common.get_repo_name()
             if not os.path.isdir(repo_name):
                 common.do_git("init")
@@ -136,10 +103,47 @@ class SaveVersion(bpy.types.Operator):
             add_files(file=os.path.basename(bpy.data.filepath))
             add_files(add_type='category')
 
-            common.do_git("commit", "-m", self.comment)
+            common.do_git("commit", "-m", msg)
+            self.report({"INFO"}, "Success!")
             result = {"FINISHED"}
         else:
             self.report({"ERROR"}, "Comment cannot be empty")
+            result = {"CANCELLED"}
+
+        return result
+
+
+# TODO: Offer to add LFS to repo
+class SaveVersion(bpy.types.Panel, ToolPanel):
+    """Save a version"""
+    bl_idname = "blendgit_PT_save_version"
+    bl_label = "Save Version"
+    # add_lfs: bpy.props.BoolProperty(
+    #     name="Add LFS",
+    #     description="LFS must be installed for this to work")
+
+    def draw(self, context: bpy.types.Context):
+        # col = self.layout.column()
+        # col.enabled = True
+        # if not is_lfs_installed():
+        #     print("LFS is not installed!")
+        #     # Disable LFS option since it's unavailable
+        #     col.enabled = False
+        # col.prop(self, "add_lfs")
+
+        layout = self.layout
+        box = layout.box()
+        row = box.row(align=True)
+        row.prop(context.scene, "commit_message", text='')
+        row = box.row(align=True)
+        row.operator(SaveCommit.bl_idname)
+
+    def invoke(self, context: bpy.types.Context,
+               event):
+        if common.doc_saved():
+            result = context.window_manager.invoke_props_dialog(self)
+        else:
+            self.report({"ERROR"}, "Need to save the new document first")
             result = {"CANCELLED"}
 
         return result

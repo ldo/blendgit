@@ -49,10 +49,10 @@ def list_commits(self=None, context=None):
 
 
 class LoadCommit(bpy.types.Operator):
-    bl_idname = "blendgit.commit"
+    bl_idname = "blendgit.load_commit"
     bl_label = "Load Commit"
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context):
         if len(context.scene.commit) != 0:
             if not common.working_dir_clean():
                 self.report({"ERROR"}, "Working directory not clean")
@@ -69,7 +69,7 @@ class LoadCommit(bpy.types.Operator):
 
 class LoadVersion(bpy.types.Panel, ToolPanel):
     """Load a version"""
-    bl_idname = "BLENDGIT_PT_load_version"
+    bl_idname = "blendgit_PT_load_version"
     bl_label = "Load Version"
 
     bpy.types.Scene.commit = bpy.props.EnumProperty(
@@ -78,7 +78,7 @@ class LoadVersion(bpy.types.Panel, ToolPanel):
         description="which previously-saved commit to restore",
     )
 
-    def draw(self, context):
+    def draw(self, context: bpy.types.Context):
         layout = self.layout
         box = layout.box()
 
