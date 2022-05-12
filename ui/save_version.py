@@ -116,7 +116,7 @@ class SaveCommit(bpy.types.Operator):
 # TODO: Offer to add LFS to repo
 class SaveVersion(bpy.types.Panel, ToolPanel):
     """Save a version"""
-    bl_idname = "blendgit_PT_save_version"
+    bl_idname = "BLENDGIT_PT_save_version"
     bl_label = "Save Version"
     # add_lfs: bpy.props.BoolProperty(
     #     name="Add LFS",

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import logging
 
-from bpy.types import Scene, Menu
+from bpy.types import Scene
 from bpy.props import StringProperty
 from bpy.utils import register_class, unregister_class
 
@@ -23,26 +23,13 @@ bl_info = {
 }
 
 
-# class VersionControlMenu(bpy.types.Menu):
-#     bl_idname = "file.version_control_menu"
-#     bl_label = "Version Control"
-
-#     def draw(self, context):
-#         for op in (LoadVersion, SaveVersion, SelectBranch):
-#             self.layout.operator(op.bl_idname, text=op.bl_label)
-
-
 _classes = {
     LoadVersion,
     LoadCommit,
     SaveVersion,
-    SaveCommit
+    SaveCommit,
     # SelectBranch,
-    # VersionControlMenu,
 }
-
-# def add_invoke_item(self, context):
-#     self.layout.menu(VersionControlMenu.bl_idname)
 
 
 logging.basicConfig(level=logging.INFO)
@@ -60,6 +47,7 @@ def register():
         for _cls in _classes:
             c.log(f"Registering {_cls.__name__}")
             register_class(_cls)
+
     except Exception:
         unregister()
 
