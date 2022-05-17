@@ -3,6 +3,10 @@ import os
 import subprocess
 import logging
 
+import bpy
+
+# from .tools.register import register_wrap
+
 
 def log(msg):
     logging.info(msg)
@@ -59,6 +63,21 @@ def get_repo_name():
     return ".git"
 
 
+def ui_refresh():
+    # A way to refresh the ui
+    refreshed = False
+    while not refreshed:
+        if hasattr(bpy.data, 'window_managers'):
+            for windowManager in bpy.data.window_managers:
+                for window in windowManager.windows:
+                    for area in window.screen.areas:
+                        area.tag_redraw()
+            refreshed = True
+            print('Refreshed UI')
+        else:
+            time.sleep(0.1)
+
+
 def do_git(*args):
     """Common routine for invoking various Git functions."""
     env = dict(os.environ)
@@ -72,7 +91,4 @@ def do_git(*args):
             shell=False,
             cwd=work_dir,
             env=env
-        ).decode('utf-8')
-
-
-bpy = import_bpy()
+        ).decode('utf-8').strip()

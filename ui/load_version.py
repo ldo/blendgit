@@ -3,9 +3,10 @@ import os.path
 
 import bpy
 
-from . import ToolPanel
+from .templates import ToolPanel
 
 from .. import common
+from ..tools.register import register_wrap
 
 
 def get_main_branch() -> str:
@@ -49,6 +50,7 @@ def list_commits(self=None, context=None):
     return last_commits_list
 
 
+@register_wrap
 class LoadCommit(bpy.types.Operator):
     bl_idname = "blendgit.load_commit"
     bl_label = "Load Commit"
@@ -68,6 +70,7 @@ class LoadCommit(bpy.types.Operator):
         return result
 
 
+@register_wrap
 class LoadVersion(bpy.types.Panel, ToolPanel):
     """Load a version"""
     bl_idname = "BLENDGIT_PT_load_version"

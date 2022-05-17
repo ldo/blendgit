@@ -1,15 +1,8 @@
 #!/usr/bin/env python3
 import logging
 
-from bpy.types import Scene
-from bpy.props import StringProperty
 from bpy.utils import register_class, unregister_class
-
-from . import common as c
-
-# from .ui.select_branch import SelectBranch
-from .ui.save_version import SaveVersion, SaveCommit
-from .ui.load_version import LoadVersion, LoadCommit
+from bpy.types import Scene
 
 bl_info = {
     "name": "Blendgit",
@@ -23,13 +16,7 @@ bl_info = {
 }
 
 
-_classes = {
-    LoadVersion,
-    LoadCommit,
-    SaveVersion,
-    SaveCommit,
-    # SelectBranch,
-}
+from . import tools, extensions, ui
 
 
 logging.basicConfig(level=logging.INFO)
@@ -38,23 +25,25 @@ logging.getLogger('blender_cloud').setLevel(logging.DEBUG)
 
 
 def register():
-    # Properties
-    Scene.commit_message = StringProperty(
-        name="Comment",
-        description="Commit message")
-    # Classes
-    try:
-        for _cls in _classes:
-            c.log(f"Registering {_cls.__name__}")
-            register_class(_cls)
-
-    except Exception:
-        unregister()
+    tools.register.order_classes()
+    for cls in tools.register.__bl_classes:
+        try:
+            register_class(cls)
+            print("Registered", cls.__name__)
+        except ValueError:
+            pass
+    extensions.register()
 
 
 def unregister():
-    for _cls in _classes:
+    for cls in reversed(tools.register.__bl_ordered_classes):
         try:
-            unregister_class(_cls)
-        except Exception:
+            unregister_class(cls)
+        except ValueError:
             pass
+        except RuntimeError:
+            pass
+
+
+if __name__ == '__main__':
+    register()
