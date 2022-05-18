@@ -1,8 +1,15 @@
 import time
 import os
-import shutil
 import subprocess
-import errno
+import logging
+
+import bpy
+
+# from .tools.register import register_wrap
+
+
+def log(msg):
+    logging.info(msg)
 
 
 def import_bpy():
@@ -46,9 +53,9 @@ def doc_saved():
 
 def working_dir_clean():
     """Checks if working dir is clean"""
-    return not do_git(("status",
-                       "--porcelain",
-                       "--untracked-files=no")).rstrip()
+    return not do_git("status",
+                      "--porcelain",
+                      "--untracked-files=no").rstrip()
 
 
 def get_repo_name():
@@ -56,39 +63,22 @@ def get_repo_name():
     return ".git"
 
 
-# Commenting out because it doesn't work on Windows right now
-# def get_workdir_name():
-#     """
-#     Name to use for a temporary source tree directory for making commits
-#     to the repo
-#     """
-#     return ".work"
+def ui_refresh():
+    # A way to refresh the ui
+    refreshed = False
+    while not refreshed:
+        if hasattr(bpy.data, 'window_managers'):
+            for windowManager in bpy.data.window_managers:
+                for window in windowManager.windows:
+                    for area in window.screen.areas:
+                        area.tag_redraw()
+            refreshed = True
+            print('Refreshed UI')
+        else:
+            time.sleep(0.1)
 
 
-# Commenting out because it doesn't work on Windows right now
-# def setup_workdir():
-#     """
-#     Creates a temporary work directory in which .git points to the actual
-#     repo directory.
-#     """
-#     work_dir = get_workdir_name()
-#     try:
-#         os.mkdir(work_dir)
-#     except OSError as why:
-#         if why.errno != errno.EEXIST:
-#             raise
-
-#     os.symlink(os.path.basename(get_repo_name()),
-#                os.path.join(work_dir, ".git"))
-#     # must be a symlink because it might not initially exist
-
-
-# def cleanup_workdir():
-#     """Gets rid of the temporary work directory."""
-#     shutil.rmtree(get_workdir_name())
-
-
-def do_git(args):
+def do_git(*args):
     """Common routine for invoking various Git functions."""
     env = dict(os.environ)
     work_dir = os.path.split(bpy.data.filepath)[0]
@@ -96,12 +86,9 @@ def do_git(args):
 
     return \
         subprocess.check_output(
-            args=("git",) + args,
+            args=("git", *args),
             stdin=subprocess.DEVNULL,
             shell=False,
             cwd=work_dir,
             env=env
-        ).decode('utf-8')
-
-
-bpy = import_bpy()
+        ).decode('utf-8').strip()

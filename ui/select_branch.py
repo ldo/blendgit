@@ -1,8 +1,10 @@
 import os.path
 
+import bpy
+
 from .. import common
 
-bpy = common.import_bpy()
+# bpy = common.import_bpy()
 
 
 def list_branches(self=None, context=None):
@@ -11,7 +13,9 @@ def list_branches(self=None, context=None):
     repo_name = common.get_repo_name()
     if os.path.isdir(repo_name):
         current_branch = common.do_git(
-            ('rev-parse', '--abbrev-ref', 'HEAD')).rstrip()
+            'rev-parse',
+            '--abbrev-ref',
+            'HEAD').rstrip()
         branches_list.append((current_branch, current_branch, ""))
         for branch in common.do_git(("branch", "--format=%(refname:short)")) \
                 .split("\n"):
@@ -28,7 +32,7 @@ def list_branches(self=None, context=None):
 
 class SelectBranch(bpy.types.Operator):
     """Select branch"""
-    bl_idname = "file.version_control_select_branch"
+    bl_idname = "blendgit_OT_select_branch"
     bl_label = "Select branch..."
 
     branch: bpy.props.EnumProperty(

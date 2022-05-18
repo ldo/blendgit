@@ -1,68 +1,49 @@
 #!/usr/bin/env python3
-from . import common
+import logging
 
-from .menu.select_branch import SelectBranch
-from .menu.save_version import SaveVersion
-# from .menu.save_version_lfs_panel import LfsPanel
-from .menu.load_version import LoadVersion
+from bpy.utils import register_class, unregister_class
+from bpy.types import Scene
 
 bl_info = {
     "name": "Blendgit",
     "author": "Nat Osaka",
     "version": (0, 8, 0),
     "blender": (3, 0, 0),
-    "location": "File > Version Control",
-    "description": "manage versions of a .blend file using Git",
+    "description": "Manage versions of a .blend file using Git",
     "warning": "",
     "wiki_url": "",
-    "tracker_url": "",
     "category": "System",
 }
 
-# main_dir = os.path.join('..', os.path.dirname(__file__))
 
-# if main_dir not in sys.path:
-#     sys.path.append(main_dir)
-
-bpy = common.import_bpy()
+from . import tools, extensions, ui
 
 
-class VersionControlMenu(bpy.types.Menu):
-    bl_idname = "file.version_control_menu"
-    bl_label = "Version Control"
-
-    def draw(self, context):
-        for op in (LoadVersion, SaveVersion, SelectBranch):
-            self.layout.operator(op.bl_idname, text=op.bl_label)
-
-
-_classes_ = (
-    LoadVersion,
-    SaveVersion,
-    # LfsPanel,
-    SelectBranch,
-    VersionControlMenu,
-)
-
-
-def add_invoke_item(self, context):
-    self.layout.menu(VersionControlMenu.bl_idname)
+logging.basicConfig(level=logging.INFO)
+logging.getLogger('blender_id').setLevel(logging.DEBUG)
+logging.getLogger('blender_cloud').setLevel(logging.DEBUG)
 
 
 def register():
-    try:
-        for _cls in _classes_:
-            bpy.utils.register_class(_cls)
-
-        bpy.types.TOPBAR_MT_file.append(add_invoke_item)
-    except Exception:
-        unregister()
+    tools.register.order_classes()
+    for cls in tools.register.__bl_classes:
+        try:
+            register_class(cls)
+            print("Registered", cls.__name__)
+        except ValueError:
+            pass
+    extensions.register()
 
 
 def unregister():
-    bpy.types.TOPBAR_MT_file.remove(add_invoke_item)
-    for _cls in _classes_:
+    for cls in reversed(tools.register.__bl_ordered_classes):
         try:
-            bpy.utils.unregister_class(_cls)
-        except Exception:
+            unregister_class(cls)
+        except ValueError:
             pass
+        except RuntimeError:
+            pass
+
+
+if __name__ == '__main__':
+    register()
