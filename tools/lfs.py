@@ -84,12 +84,13 @@ def initialize_lfs(context, extra_filetypes=()):
 
 
 def initialize_lfs_async():
+    """Initializes LFS asyncronously"""
     thread = Thread(target=initialize_lfs)
     thread.start()
 
 
 def lfs_data_update(force_update=False):
-    """Updates the data about git-lfs"""
+    """Checks LFS installed/initialized status"""
     global lfs_installed, lfs_initialized, update_needed
     if not update_needed and not force_update:
         return
@@ -105,7 +106,7 @@ def lfs_data_update(force_update=False):
 
 
 def lfs_data_update_async():
-    """Updates the data about git-lfs asyncronously"""
+    """Performs LFS checks asyncronously"""
     global reloading
     if reloading:
         return

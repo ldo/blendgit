@@ -1,19 +1,22 @@
 import bpy
+from bpy.props import StringProperty
 
 from ..templates import ToolPanel
-from ..common import doc_saved
 from ..tools.register import register_wrap
 from ..tools.lfs import InitLfs, lfs_data_update_async
 from ..tools import lfs
 from ..tools.saving import SaveCommit
 
 
-# TODO: Offer to add LFS to repo
 @register_wrap
 class SaveVersion(bpy.types.Panel, ToolPanel):
     """Save a version"""
     bl_idname = "BLENDGIT_PT_save_version"
     bl_label = "Save Version"
+
+    bpy.types.WindowManager.commit_message = StringProperty(
+        name="Comment",
+        description="Commit message")
 
     def draw(self, context: bpy.types.Context):
         layout = self.layout
@@ -22,7 +25,7 @@ class SaveVersion(bpy.types.Panel, ToolPanel):
         lfs_data_update_async()
 
         commit_msg_row = box.row(align=True)
-        commit_msg_row.prop(context.scene, "commit_message", text='')
+        commit_msg_row.prop(context.window_manager, "commit_message", text='')
         save_commit_button_row = box.row(align=True)
         save_commit_button_row.operator(SaveCommit.bl_idname)
 
@@ -40,13 +43,3 @@ class SaveVersion(bpy.types.Panel, ToolPanel):
                       icon="INFO")
             row = box.row(align=True)
             row.operator(InitLfs.bl_idname)
-
-    def invoke(self, context: bpy.types.Context,
-               event):
-        if doc_saved():
-            result = context.window_manager.invoke_props_dialog(self)
-        else:
-            self.report({"ERROR"}, "Need to save the new document first")
-            result = {"CANCELLED"}
-
-        return result

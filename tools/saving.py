@@ -1,35 +1,46 @@
 import os.path
 
 import bpy
+from bpy.props import StringProperty
 
 from ..common import do_git, get_repo_name
-from ..tools.register import register_wrap
+from .register import register_wrap
+from .lfs import initialize_lfs_async
+from .load_commit import refresh_commit_list_async
 
 
 @register_wrap
 class SaveCommit(bpy.types.Operator):
+    """Save and commit latest changes"""
     bl_idname = "blendgit.save_commit"
     bl_label = "Save Commit"
 
     def execute(self, context: bpy.types.Context):
-        msg = context.scene.commit_message
+        msg = context.window_manager.commit_message
 
         if msg.strip():
             repo_name = get_repo_name()
             if not os.path.isdir(repo_name):
+                # May want to create a .gitignore too
                 do_git("init")
+                initialize_lfs_async()
 
             bpy.ops.wm.save_as_mainfile(
                 "EXEC_DEFAULT", filepath=bpy.data.filepath)
             add_files(file=os.path.basename(bpy.data.filepath))
             add_files(add_type='category')
 
-            do_git("commit", "-m", msg)
+            do_git("commit", "-am", msg)
             self.report({"INFO"}, "Success!")
+            refresh_commit_list_async()
             result = {"FINISHED"}
         else:
             self.report({"ERROR"}, "Comment cannot be empty")
             result = {"CANCELLED"}
+
+        msg = StringProperty(
+            name="Comment",
+            description="Commit message")
 
         return result
 

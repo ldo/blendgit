@@ -1,11 +1,11 @@
-from bpy.types import Scene
-from bpy.props import StringProperty, BoolProperty
+import bpy
+from bpy.props import EnumProperty
+
+from .tools.load_commit import get_commits
 
 
 def register():
-    Scene.commit_message = StringProperty(
-        name="Comment",
-        description="Commit message")
-
-    Scene.lfs_check_done = BoolProperty(
-        name="LfsCheckDone")
+    bpy.types.WindowManager.commit = EnumProperty(
+        items=get_commits,
+        description="Which previously-saved commit to restore",
+    )
